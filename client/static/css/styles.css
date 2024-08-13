@@ -1,0 +1,37 @@
+/* styles.css */
+body {
+    background-image: url('/static/images/papyrus-background.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: #4a4a4a; /* Dark gray text for readability */
+}
+
+.card {
+    border: 1px solid #3e3e3e; /* Darker border for a medieval touch */
+    border-radius: 0.5rem;
+}
+
+.card-header, .card-footer {
+    background-color: #2d2d2d; /* Dark background for medieval style */
+    border-bottom: 1px solid #3e3e3e;
+}
+
+.card-body {
+    background-color: #f5f5f5; /* Light beige background for the form */
+}
+
+.btn-dark {
+    background-color: #3e3e3e; /* Dark gray button for a medieval look */
+    border-color: #3e3e3e;
+}
+
+.btn-dark:hover {
+    background-color: #2d2d2d;
+    border-color: #2d2d2d;
+}
+
+.medieval-card {
+    background: rgba(255, 255, 255, 0.8); /* Slightly transparent background for card */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}

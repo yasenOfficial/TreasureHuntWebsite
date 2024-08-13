@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treasure Hunt</title>
+    <link rel="stylesheet" href="/static/css/styles.css"> <!-- Link to the CSS file -->
+</head>
+
+<body>
+    <h1>Welcome to the Treasure Hunt, {{.Username}}!</h1>
+
+    <div class="stopwatch">
+        <p>Stopwatch started at: {{.StartTime}}</p>
+        <p>Elapsed time: <span id="elapsed-time"></span></p>
+    </div>
+
+    <div class="quests">
+        <h2>Your Quests:</h2>
+        <div class="quest">Quest 1: Find the hidden key.</div>
+        <div class="quest">Quest 2: Solve the ancient puzzle.</div>
+        <div class="quest">Quest 3: Navigate the maze to the treasure.</div>
+    </div>
+
+    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script> <!-- Link to the JavaScript file -->
+</body>
+
+</html>
