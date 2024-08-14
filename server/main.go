@@ -189,8 +189,6 @@ func main() {
 		tmpl.Execute(w, data)
 	})
 
-	// Handle quest submission
-	// Handle quest submission
 	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			cookie, err := r.Cookie("logged_in_team")
