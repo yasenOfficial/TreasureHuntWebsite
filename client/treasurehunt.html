@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Treasure Hunt</title>
     <link rel="stylesheet" href="/static/css/styles.css"> <!-- Link to the CSS file -->
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
 </head>
 
 <body>
@@ -13,17 +16,45 @@
 
     <div class="stopwatch">
         <p>Stopwatch started at: {{.StartTime}}</p>
-        <p>Elapsed time: <span id="elapsed-time"></span></p>
+        <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p>
     </div>
 
-    <div class="quests">
-        <h2>Your Quests:</h2>
-        <div class="quest">Quest 1: Find the hidden key.</div>
-        <div class="quest">Quest 2: Solve the ancient puzzle.</div>
-        <div class="quest">Quest 3: Navigate the maze to the treasure.</div>
-    </div>
+    <div class="quest-container">
+        <h2>Current Quest:</h2>
+        <div class="quest">
+            <p>{{.Quest.Text}}</p>
 
-    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script> <!-- Link to the JavaScript file -->
+            <!-- Display image if available -->
+            {{if .ImageData}}
+            <div class="quest-image">
+                <img src="{{.ImageData}}" alt="Quest Image" style="max-width: 100%; height: auto;">
+            </div>
+            {{end}}
+
+            
+            <form action="/submit" method="post">
+                <input type="hidden" id="quest_id" name="quest_id" value="{{.Quest.ID}}">
+                
+                <label for="answer">Your Answer:</label>
+                <input type="text" id="answer" name="answer" required>
+                
+                <!-- File upload input -->
+                <label for="file">Upload a file (if required):</label>
+                <input type="file" id="file" name="file">
+                
+                <button type="submit">Submit Answer</button>
+            </form>
+            
+                <!-- <p>{{.ErrorMsg}}</p> -->
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
+    <!-- Link to the JavaScript file -->
 </body>
 
 </html>

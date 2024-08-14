@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -191,6 +190,7 @@ func main() {
 	})
 
 	// Handle quest submission
+	// Handle quest submission
 	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			cookie, err := r.Cookie("logged_in_team")
@@ -206,34 +206,57 @@ func main() {
 			answer := r.FormValue("answer")
 			questID := r.FormValue("quest_id")
 
-			// Retrieve the quest from the database
+			// Retrieve the quest from the database using the quest_id and team_name
 			var quest Quest
 			if err := db.Where("id = ? AND team_name = ?", questID, teamName).First(&quest).Error; err != nil {
+				log.Printf("Quest not found: %v", err)
 				http.Error(w, "Quest not found", http.StatusNotFound)
 				return
 			}
 
 			// Check the answer
 			if answer == quest.CorrectAnswer {
-				// Mark quest as completed
+				// Mark the current quest as completed
 				quest.Completed = true
 				db.Save(&quest)
-
-				// Handle file upload
-				file, _, err := r.FormFile("file")
-				if err == nil {
-					defer file.Close()
-
-					// Save the file or process it as needed
-					fileData, _ := ioutil.ReadAll(file)
-					// Process the file data (e.g., store it in a database or save it to a file system)
-					_ = fileData // Placeholder: replace with actual handling code
-				}
 
 				// Redirect to the next quest or show success message
 				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s", teamName), http.StatusSeeOther)
 			} else {
-				http.Error(w, "Incorrect answer, try again!", http.StatusBadRequest)
+				// Render the treasure hunt page again with an error message
+				mu.Lock()
+				team := teams[teamName]
+				mu.Unlock()
+
+				elapsed := time.Since(team.Stopwatch)
+
+				tmpl, err := template.ParseFiles("../client/treasurehunt.html")
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				data := struct {
+					Username    string
+					StartTime   string
+					ElapsedTime string
+					Quest       Quest
+					ImageData   string
+					ErrorMsg    string
+				}{
+					Username:    team.Username,
+					StartTime:   team.Stopwatch.Format(time.RFC3339),
+					ElapsedTime: elapsed.String(),
+					Quest:       quest,
+					ImageData:   "",
+					ErrorMsg:    "Wrong answer, try again!",
+				}
+
+				if len(quest.Image) > 0 {
+					data.ImageData = "data:image/png;base64," + base64.StdEncoding.EncodeToString(quest.Image)
+				}
+
+				tmpl.Execute(w, data)
 			}
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -244,8 +267,10 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-// seedDatabase seeds the database with initial quests
 func seedDatabase() {
+	// Reset the Completed status of all quests
+	db.Model(&Quest{}).Update("Completed", false)
+
 	// Check if the quests are already in the database
 	var count int64
 	db.Model(&Quest{}).Count(&count)
