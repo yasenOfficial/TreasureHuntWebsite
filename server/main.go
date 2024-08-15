@@ -15,7 +15,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Team represents a team with its credentials and stopwatch status.
 type Team struct {
 	Username    string
 	Password    string
@@ -23,7 +22,6 @@ type Team struct {
 	StopwatchOn bool
 }
 
-// Quest represents a quest in the treasure hunt.
 type Quest struct {
 	gorm.Model
 	TeamName      string
@@ -35,9 +33,11 @@ type Quest struct {
 }
 
 var (
-	db    *gorm.DB
-	teams = map[string]*Team{}
-	mu    sync.Mutex
+	db          *gorm.DB
+	teams       = map[string]*Team{}
+	mu          sync.Mutex
+	templates   *template.Template
+	templateDir = "../client"
 )
 
 func init() {
@@ -58,6 +58,9 @@ func init() {
 
 	// Seed the database with quests
 	seedDatabase()
+
+	// Parse templates once and cache them
+	templates = template.Must(template.ParseGlob(fmt.Sprintf("%s/*.html", templateDir)))
 }
 
 func main() {
@@ -69,24 +72,21 @@ func main() {
 	teams["TEAM3"] = &Team{Username: os.Getenv("TEAM3USER"), Password: os.Getenv("TEAM3PASS")}
 
 	// Serve static files
-	http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir("../client/static/css"))))
-	http.Handle("/static/js/", http.StripPrefix("/static/js/", http.FileServer(http.Dir("../client/static/js"))))
+	http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/css", templateDir)))))
+	http.Handle("/static/js/", http.StripPrefix("/static/js/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/js", templateDir)))))
 
 	// Serve the login page
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("../client/index.html")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
 		data := struct {
 			Message string
 		}{
 			Message: "Please enter your credentials",
 		}
 
-		tmpl.Execute(w, data)
+		err := templates.ExecuteTemplate(w, "index.html", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	// Handle the login form submission
@@ -138,6 +138,7 @@ func main() {
 
 		teamName := cookie.Value
 		requestedTeam := r.URL.Query().Get("team")
+		success := r.URL.Query().Get("success")
 
 		if teamName != requestedTeam {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -162,10 +163,12 @@ func main() {
 			return
 		}
 
-		tmpl, err := template.ParseFiles("../client/treasurehunt.html")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		var successMsg string
+		var errorMsg string
+		if success == "true" {
+			successMsg = "Congratulations! You have successfully completed the quest."
+		} else if success == "false" {
+			errorMsg = "Wrong answer, try again!"
 		}
 
 		data := struct {
@@ -174,19 +177,26 @@ func main() {
 			ElapsedTime string
 			Quest       Quest
 			ImageData   string
+			SuccessMsg  string
+			ErrorMsg    string
 		}{
 			Username:    team.Username,
 			StartTime:   team.Stopwatch.Format(time.RFC3339),
 			ElapsedTime: elapsed.String(),
 			Quest:       quest,
 			ImageData:   "", // Default empty string for image data
+			SuccessMsg:  successMsg,
+			ErrorMsg:    errorMsg,
 		}
 
 		if len(quest.Image) > 0 {
 			data.ImageData = "data:image/png;base64," + base64.StdEncoding.EncodeToString(quest.Image)
 		}
 
-		tmpl.Execute(w, data)
+		err = templates.ExecuteTemplate(w, "treasurehunt.html", data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	})
 
 	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
@@ -219,42 +229,9 @@ func main() {
 				db.Save(&quest)
 
 				// Redirect to the next quest or show success message
-				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s", teamName), http.StatusSeeOther)
+				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s&success=true", teamName), http.StatusSeeOther)
 			} else {
-				// Render the treasure hunt page again with an error message
-				mu.Lock()
-				team := teams[teamName]
-				mu.Unlock()
-
-				elapsed := time.Since(team.Stopwatch)
-
-				tmpl, err := template.ParseFiles("../client/treasurehunt.html")
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
-				}
-
-				data := struct {
-					Username    string
-					StartTime   string
-					ElapsedTime string
-					Quest       Quest
-					ImageData   string
-					ErrorMsg    string
-				}{
-					Username:    team.Username,
-					StartTime:   team.Stopwatch.Format(time.RFC3339),
-					ElapsedTime: elapsed.String(),
-					Quest:       quest,
-					ImageData:   "",
-					ErrorMsg:    "Wrong answer, try again!",
-				}
-
-				if len(quest.Image) > 0 {
-					data.ImageData = "data:image/png;base64," + base64.StdEncoding.EncodeToString(quest.Image)
-				}
-
-				tmpl.Execute(w, data)
+				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s&success=false", teamName), http.StatusSeeOther)
 			}
 		} else {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
