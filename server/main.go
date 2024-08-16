@@ -159,7 +159,11 @@ func main() {
 		// Get the current quest
 		var quest Quest
 		if err := db.Where("team_name = ? AND completed = ?", teamName, false).Order("quest_number asc").First(&quest).Error; err != nil {
-			http.Error(w, "No more quests available", http.StatusNotFound)
+			// Redirect to the game finished page
+			err = templates.ExecuteTemplate(w, "gamefinished.html", nil)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			return
 		}
 
