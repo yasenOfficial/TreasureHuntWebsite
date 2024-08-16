@@ -26,10 +26,8 @@
                 <p>{{.Quest.Text}}</p>
 
                 <!-- Display image if available -->
-                {{if .ImageData}}
-                <div class="quest-image mb-4">
-                    <img src="{{.ImageData}}" alt="Quest Image" class="img-fluid">
-                </div>
+                {{if .Quest.ImagePath}}
+                    <img src="{{.Quest.ImagePath}}" alt="Quest Image" class="quest-image img-fluid">
                 {{end}}
 
                 <form action="/submit" method="post">

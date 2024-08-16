@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"html/template"
 	"log"
@@ -26,7 +25,7 @@ type Quest struct {
 	gorm.Model
 	TeamName      string
 	QuestNumber   int
-	Image         []byte
+	ImagePath     string
 	Text          string
 	CorrectAnswer string
 	Completed     bool
@@ -74,7 +73,7 @@ func main() {
 	// Serve static files
 	http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/css", templateDir)))))
 	http.Handle("/static/js/", http.StripPrefix("/static/js/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/js", templateDir)))))
-
+	http.Handle("/static/img/", http.StripPrefix("/static/img/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/img", templateDir)))))
 	// Serve the login page
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		data := struct {
@@ -180,7 +179,6 @@ func main() {
 			StartTime   string
 			ElapsedTime string
 			Quest       Quest
-			ImageData   string
 			SuccessMsg  string
 			ErrorMsg    string
 		}{
@@ -188,13 +186,8 @@ func main() {
 			StartTime:   team.Stopwatch.Format(time.RFC3339),
 			ElapsedTime: elapsed.String(),
 			Quest:       quest,
-			ImageData:   "", // Default empty string for image data
 			SuccessMsg:  successMsg,
 			ErrorMsg:    errorMsg,
-		}
-
-		if len(quest.Image) > 0 {
-			data.ImageData = "data:image/png;base64," + base64.StdEncoding.EncodeToString(quest.Image)
 		}
 
 		err = templates.ExecuteTemplate(w, "treasurehunt.html", data)
@@ -210,7 +203,6 @@ func main() {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-
 			teamName := cookie.Value
 
 			// Parse form data
@@ -258,17 +250,17 @@ func seedDatabase() {
 		return
 	}
 
-	// Seed the database with quests
+	// Seed the database with quests and image paths
 	quests := []Quest{
-		{TeamName: "TEAM1", QuestNumber: 1, Text: "Find the hidden key.", CorrectAnswer: "key"},
-		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle"},
+		{TeamName: "TEAM1", QuestNumber: 1, Text: "Find the hidden key.", CorrectAnswer: "key", ImagePath: "/static/img/key.png"},
+		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png"},
 		{TeamName: "TEAM1", QuestNumber: 3, Text: "Navigate the maze to the treasure.", CorrectAnswer: "maze"},
-		{TeamName: "TEAM2", QuestNumber: 1, Text: "Find the lost artifact.", CorrectAnswer: "artifact"},
-		{TeamName: "TEAM2", QuestNumber: 2, Text: "Decode the ancient script.", CorrectAnswer: "decode"},
-		{TeamName: "TEAM2", QuestNumber: 3, Text: "Escape the labyrinth.", CorrectAnswer: "escape"},
-		{TeamName: "TEAM3", QuestNumber: 1, Text: "Discover the secret map.", CorrectAnswer: "map"},
-		{TeamName: "TEAM3", QuestNumber: 2, Text: "Unlock the treasure chest.", CorrectAnswer: "chest"},
-		{TeamName: "TEAM3", QuestNumber: 3, Text: "Defeat the guardian.", CorrectAnswer: "guardian"},
+		{TeamName: "TEAM2", QuestNumber: 1, Text: "Find the lost artifact.", CorrectAnswer: "artifact", ImagePath: "/static/images/artifact.png"},
+		{TeamName: "TEAM2", QuestNumber: 2, Text: "Decode the ancient script.", CorrectAnswer: "decode", ImagePath: "/static/images/script.png"},
+		{TeamName: "TEAM2", QuestNumber: 3, Text: "Escape the labyrinth.", CorrectAnswer: "escape", ImagePath: "/static/images/labyrinth.png"},
+		{TeamName: "TEAM3", QuestNumber: 1, Text: "Discover the secret map.", CorrectAnswer: "map", ImagePath: "/static/images/map.png"},
+		{TeamName: "TEAM3", QuestNumber: 2, Text: "Unlock the treasure chest.", CorrectAnswer: "chest", ImagePath: "/static/images/chest.png"},
+		{TeamName: "TEAM3", QuestNumber: 3, Text: "Defeat the guardian.", CorrectAnswer: "guardian", ImagePath: "/static/images/guardian.png"},
 	}
 
 	for _, quest := range quests {
