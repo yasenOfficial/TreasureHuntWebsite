@@ -30,6 +30,20 @@
                     <img src="{{.Quest.ImagePath}}" alt="Quest Image" class="quest-image img-fluid">
                 {{end}}
 
+
+                {{if .Quest.AudioPath}}
+                    <audio controls>
+                        <source src="{{.Quest.AudioPath}}" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                {{end}}
+
+                <!-- Hint button -->
+                {{if .Quest.Hint}}
+                    <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">Show Hint</button>
+                    <p id="hintText" class="text-muted" style="display:none;">Hint: {{.Quest.Hint}}</p>
+                {{end}}
+
                 <form action="/submit" method="post">
                     <input type="hidden" id="quest_id" name="quest_id" value="{{.Quest.ID}}">
 
@@ -38,16 +52,10 @@
                         <input type="text" id="answer" name="answer" class="form-control" required>
                     </div>
 
-                    <!-- File upload input -->
-                    <div class="form-group">
-                        <label for="file">Upload a file (if required):</label>
-                        <input type="file" id="file" name="file" class="form-control-file">
-                    </div>
-
                     <button type="submit" class="btn btn-primary">Submit Answer</button>
                 </form>
 
-                <!-- Error message -->
+                <!-- Error and Success modals -->
                 {{if .ErrorMsg}}
                 <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel"
                     aria-hidden="true">
@@ -76,8 +84,7 @@
                 {{end}}
 
                 {{if .SuccessMsg}}
-                <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel"
-                    aria-hidden="true">
+                <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header">
@@ -101,11 +108,15 @@
                     });
                 </script>
                 {{end}}
-
-
-
             </div>
         </div>
+
+        <script>
+            document.getElementById("hintButton").addEventListener("click", function () {
+                document.getElementById("hintText").style.display = "block";
+            });
+        </script>
+
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -113,6 +124,9 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
+
+    <script src="/static/js/hintHandler.js"></script>
+
 </body>
 
 </html>

@@ -28,7 +28,11 @@ type Quest struct {
 	ImagePath     string
 	Text          string
 	CorrectAnswer string
+	Hint          string
+	AudioPath     string
 	Completed     bool
+	Skipped       bool
+	HintsUsed     int
 }
 
 var (
@@ -74,6 +78,8 @@ func main() {
 	http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/css", templateDir)))))
 	http.Handle("/static/js/", http.StripPrefix("/static/js/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/js", templateDir)))))
 	http.Handle("/static/img/", http.StripPrefix("/static/img/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/img", templateDir)))))
+	http.Handle("/static/audio/", http.StripPrefix("/static/audio/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/audio", templateDir)))))
+
 	// Serve the login page
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		data := struct {
@@ -159,7 +165,21 @@ func main() {
 		var quest Quest
 		if err := db.Where("team_name = ? AND completed = ?", teamName, false).Order("quest_number asc").First(&quest).Error; err != nil {
 			// Redirect to the game finished page
-			err = templates.ExecuteTemplate(w, "gamefinished.html", nil)
+			var questCount int64
+			db.Model(&Quest{}).Where("team_name = ? AND skipped = ?", teamName, true).Count(&questCount)
+
+			var hintCount int64
+			db.Model(&Quest{}).Where("team_name = ?", teamName).Select("sum(hints_used)").Row().Scan(&hintCount)
+
+			data := struct {
+				HintCount int64
+				SkipCount int64
+			}{
+				HintCount: hintCount,
+				SkipCount: questCount,
+			}
+
+			err = templates.ExecuteTemplate(w, "gamefinished.html", data)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -196,6 +216,7 @@ func main() {
 		}
 	})
 
+	// Handle answer submission
 	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			cookie, err := r.Cookie("logged_in_team")
@@ -218,12 +239,22 @@ func main() {
 				return
 			}
 
+			if answer == "CODE=SKIP" {
+				// Mark the quest as skipped
+				quest.Skipped = true
+				quest.Completed = true
+				db.Save(&quest)
+				logAction(quest.TeamName, fmt.Sprintf("Skipped Quest %d", quest.QuestNumber))
+				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s", teamName), http.StatusSeeOther)
+				return
+			}
+
 			// Check the answer
 			if answer == quest.CorrectAnswer {
 				// Mark the current quest as completed
 				quest.Completed = true
 				db.Save(&quest)
-
+				logAction(quest.TeamName, fmt.Sprintf("Completed Quest %d", quest.QuestNumber))
 				// Redirect to the next quest or show success message
 				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s&success=true", teamName), http.StatusSeeOther)
 			} else {
@@ -234,13 +265,49 @@ func main() {
 		}
 	})
 
+	// Handler for hint requests
+	http.HandleFunc("/hint/", func(w http.ResponseWriter, r *http.Request) {
+		// Extract quest ID from the URL
+		questID := r.URL.Path[len("/hint/"):]
+
+		// Check for session cookie
+		cookie, err := r.Cookie("logged_in_team")
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		teamName := cookie.Value
+
+		// Retrieve the quest from the database using the quest_id and team_name
+		var quest Quest
+		if err := db.Where("id = ? AND team_name = ?", questID, teamName).First(&quest).Error; err != nil {
+			log.Printf("Quest not found: %v", err)
+			http.Error(w, "Quest not found", http.StatusNotFound)
+			return
+		}
+
+		// Increment the hint count and update the quest
+		quest.HintsUsed++
+		db.Save(&quest)
+
+		// Log the hint usage
+		logAction(teamName, fmt.Sprintf("Used Hint for Quest %d", quest.QuestNumber))
+
+		// Respond with success
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"success": true}`))
+	})
+
 	fmt.Println("Server is running on port 8080")
 	http.ListenAndServe(":8080", nil)
 }
 
+// seedDatabase seeds the database with initial quests
 func seedDatabase() {
 	// Reset the Completed status of all quests
 	db.Model(&Quest{}).Update("Completed", false)
+	db.Model(&Quest{}).Update("Skipped", false)
+	db.Model(&Quest{}).Update("HintsUsed", 0)
 
 	// Check if the quests are already in the database
 	var count int64
@@ -250,16 +317,16 @@ func seedDatabase() {
 		return
 	}
 
-	// Seed the database with quests and image paths
+	// Seed the database with quests, including hints
 	quests := []Quest{
-		{TeamName: "TEAM1", QuestNumber: 1, Text: "Find the hidden key.", CorrectAnswer: "key", ImagePath: "/static/img/key.png"},
-		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png"},
-		{TeamName: "TEAM1", QuestNumber: 3, Text: "Navigate the maze to the treasure.", CorrectAnswer: "maze"},
-		{TeamName: "TEAM2", QuestNumber: 1, Text: "Find the lost artifact.", CorrectAnswer: "artifact", ImagePath: "/static/images/artifact.png"},
+		{TeamName: "TEAM1", QuestNumber: 1, Text: "Find the hidden key.", CorrectAnswer: "key", ImagePath: "/static/img/key.png", Hint: "Look where you least expect it."},
+		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png", Hint: "The answer lies in the patterns."},
+		{TeamName: "TEAM1", QuestNumber: 3, Text: "Navigate the maze to the treasure.", CorrectAnswer: "maze", AudioPath: "/static/audio/maze.mp3"},
+		{TeamName: "TEAM2", QuestNumber: 1, Text: "Find the lost artifact.", CorrectAnswer: "artifact", ImagePath: "/static/images/artifact.png", Hint: "Think about ancient history."},
 		{TeamName: "TEAM2", QuestNumber: 2, Text: "Decode the ancient script.", CorrectAnswer: "decode", ImagePath: "/static/images/script.png"},
-		{TeamName: "TEAM2", QuestNumber: 3, Text: "Escape the labyrinth.", CorrectAnswer: "escape", ImagePath: "/static/images/labyrinth.png"},
+		{TeamName: "TEAM2", QuestNumber: 3, Text: "Escape the labyrinth.", CorrectAnswer: "escape", ImagePath: "/static/images/labyrinth.png", Hint: "Follow the left wall."},
 		{TeamName: "TEAM3", QuestNumber: 1, Text: "Discover the secret map.", CorrectAnswer: "map", ImagePath: "/static/images/map.png"},
-		{TeamName: "TEAM3", QuestNumber: 2, Text: "Unlock the treasure chest.", CorrectAnswer: "chest", ImagePath: "/static/images/chest.png"},
+		{TeamName: "TEAM3", QuestNumber: 2, Text: "Unlock the treasure chest.", CorrectAnswer: "chest", ImagePath: "/static/images/chest.png", Hint: "The key is hidden nearby."},
 		{TeamName: "TEAM3", QuestNumber: 3, Text: "Defeat the guardian.", CorrectAnswer: "guardian", ImagePath: "/static/images/guardian.png"},
 	}
 
@@ -268,4 +335,17 @@ func seedDatabase() {
 	}
 
 	fmt.Println("Database seeded with quests.")
+}
+
+// logAction logs team actions to a file
+func logAction(teamName, action string) {
+	file, err := os.OpenFile("team_actions.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Error opening log file: %v", err)
+		return
+	}
+	defer file.Close()
+
+	log.SetOutput(file)
+	log.Printf("Team %s: %s\n", teamName, action)
 }
