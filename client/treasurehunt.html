@@ -12,10 +12,11 @@
 <body>
     <div class="container mt-5">
         <h1>Welcome to the Treasure Hunt, {{.Username}}!</h1>
-
+        
         <div class="stopwatch my-4">
-            <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
             <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p>
+            <p>Time Remaining: <span id="countdown-time">--:--:--</span></p>
+
         </div>
 
         <div class="quest-container my-4">
@@ -145,8 +146,10 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
     <script src="/static/js/hintHandler.js"></script>
+    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/timerHandler.js"></script>    
+    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
+
 </body>
 
 </html>

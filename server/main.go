@@ -259,6 +259,16 @@ func main() {
 				return
 			}
 
+			if answer == "CODE=SKIP" {
+				// Mark the quest as skipped
+				quest.Skipped = true
+				quest.Completed = true
+				db.Save(&quest)
+				logAction(quest.TeamName, fmt.Sprintf("Skipped Quest %d", quest.QuestNumber))
+				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s&skipped=true", teamName), http.StatusSeeOther)
+				return
+			}
+
 			if quest.ImageRequired {
 				file, handler, err := r.FormFile("uploaded_image")
 				if err != nil {
@@ -337,16 +347,6 @@ func main() {
 
 				// Log the uploaded file path
 				log.Printf("File uploaded successfully: %s", filePath)
-			}
-
-			if answer == "CODE=SKIP" {
-				// Mark the quest as skipped
-				quest.Skipped = true
-				quest.Completed = true
-				db.Save(&quest)
-				logAction(quest.TeamName, fmt.Sprintf("Skipped Quest %d", quest.QuestNumber))
-				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s&skipped=true", teamName), http.StatusSeeOther)
-				return
 			}
 
 			// Check the answer

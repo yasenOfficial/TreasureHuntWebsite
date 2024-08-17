@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const minutes = String(elapsed.getUTCMinutes()).padStart(2, '0');
             const seconds = String(elapsed.getUTCSeconds()).padStart(2, '0');
 
-            elapsedTimeElement.textContent = `${hours}:${minutes}:${seconds}`;
+            elapsedTimeElement.textContent = (`${hours}:${minutes}:${seconds}`);
         }
 
         // Update the timer every second
