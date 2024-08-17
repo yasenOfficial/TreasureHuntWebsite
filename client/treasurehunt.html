@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Treasure Hunt</title>
     <link rel="stylesheet" href="/static/css/styles.css"> <!-- Link to the CSS file -->
-
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 
@@ -16,7 +15,6 @@
 
         <div class="stopwatch my-4">
             <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
-
             <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p>
         </div>
 
@@ -27,41 +25,46 @@
 
                 <!-- Display image if available -->
                 {{if .Quest.ImagePath}}
-                    <img src="{{.Quest.ImagePath}}" alt="Quest Image" class="quest-image img-fluid">
+                <img src="{{.Quest.ImagePath}}" alt="Quest Image" class="quest-image img-fluid">
                 {{end}}
 
-
                 {{if .Quest.AudioPath}}
-                    <audio controls>
-                        <source src="{{.Quest.AudioPath}}" type="audio/mpeg">
-                        Your browser does not support the audio element.
-                    </audio>
+                <audio controls>
+                    <source src="{{.Quest.AudioPath}}" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
                 {{end}}
 
                 <!-- Hint button -->
                 {{if .Quest.Hint}}
-                    <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">Show Hint</button>
-                    <p id="hintText" class="text-muted" style="display:none;">Hint: {{.Quest.Hint}}</p>
+                <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">Show Hint</button>
+                <p id="hintText" class="text-warning" style="display:none;">Hint: {{.Quest.Hint}}</p>
                 {{end}}
 
-                <form action="/submit" method="post">
+                <form action="/submit" method="post" enctype="multipart/form-data"> <!-- Enable file upload -->
                     <input type="hidden" id="quest_id" name="quest_id" value="{{.Quest.ID}}">
+
+                    <!-- File upload form (only shown if ImageRequired is true) -->
+                    {{if .Quest.ImageRequired}}
+                    <div class="form-group">
+                        <label for="uploaded_image">Upload Image:</label>
+                        <input type="file" id="uploaded_image" name="uploaded_image" class="form-control-file">
+                    </div>
+                    {{end}}
 
                     <div class="form-group">
                         <label for="answer">Your Answer:</label>
                         <input type="text" id="answer" name="answer" class="form-control" required>
                     </div>
-
                     <button type="submit" class="btn btn-primary">Submit Answer</button>
                 </form>
 
-                <!-- Error and Success modals -->
+                <!-- Modals for Error, Success, and Skipped messages (if applicable) -->
                 {{if .ErrorMsg}}
-                <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel"
-                    aria-hidden="true">
+                <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
-                            <div class="modal-header">
+                            <div class="modal-header bg-warning text-white">
                                 <h5 class="modal-title" id="errorModalLabel">Uh Oh!</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
@@ -87,7 +90,7 @@
                 <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
-                            <div class="modal-header">
+                            <div class="modal-header bg-success text-white">
                                 <h5 class="modal-title" id="successModalLabel">Congratulations!</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
@@ -108,25 +111,42 @@
                     });
                 </script>
                 {{end}}
+
+                {{if .SkipMsg}}
+                <div class="modal fade" id="skipModal" tabindex="-1" role="dialog" aria-labelledby="skipModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-dark">
+                                <h5 class="modal-title" id="skipModalLabel">Quest Skipped</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <p>{{.SkipMsg}}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        $('#skipModal').modal('show');
+                    });
+                </script>
+                {{end}}
+
             </div>
         </div>
-
-        <script>
-            document.getElementById("hintButton").addEventListener("click", function () {
-                document.getElementById("hintText").style.display = "block";
-            });
-        </script>
-
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
     <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
-
     <script src="/static/js/hintHandler.js"></script>
-
 </body>
 
 </html>

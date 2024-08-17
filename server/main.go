@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -33,6 +34,7 @@ type Quest struct {
 	Completed     bool
 	Skipped       bool
 	HintsUsed     int
+	ImageRequired bool // New field to indicate if an image is required
 }
 
 var (
@@ -54,6 +56,13 @@ func init() {
 	db, err = gorm.Open("sqlite3", "treasure_hunt.db")
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %v", err)
+	}
+
+	if _, err := os.Stat("uploads"); os.IsNotExist(err) {
+		err := os.Mkdir("uploads", 0755)
+		if err != nil {
+			log.Fatalf("Failed to create uploads directory: %v", err)
+		}
 	}
 
 	// Migrate the schema
@@ -144,6 +153,7 @@ func main() {
 		teamName := cookie.Value
 		requestedTeam := r.URL.Query().Get("team")
 		success := r.URL.Query().Get("success")
+		skipped := r.URL.Query().Get("skipped")
 
 		if teamName != requestedTeam {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -188,10 +198,13 @@ func main() {
 
 		var successMsg string
 		var errorMsg string
+		var skipMsg string
 		if success == "true" {
 			successMsg = "Congratulations! You have successfully completed the quest."
 		} else if success == "false" {
 			errorMsg = "Wrong answer, try again!"
+		} else if skipped == "true" {
+			skipMsg = "You have skipped this quest."
 		}
 
 		data := struct {
@@ -201,6 +214,7 @@ func main() {
 			Quest       Quest
 			SuccessMsg  string
 			ErrorMsg    string
+			SkipMsg     string
 		}{
 			Username:    team.Username,
 			StartTime:   team.Stopwatch.Format(time.RFC3339),
@@ -208,6 +222,7 @@ func main() {
 			Quest:       quest,
 			SuccessMsg:  successMsg,
 			ErrorMsg:    errorMsg,
+			SkipMsg:     skipMsg,
 		}
 
 		err = templates.ExecuteTemplate(w, "treasurehunt.html", data)
@@ -227,7 +242,12 @@ func main() {
 			teamName := cookie.Value
 
 			// Parse form data
-			r.ParseForm()
+			err = r.ParseMultipartForm(10 << 20) // 10 MB limit for uploaded files
+			if err != nil {
+				http.Error(w, "Error parsing form data", http.StatusBadRequest)
+				return
+			}
+
 			answer := r.FormValue("answer")
 			questID := r.FormValue("quest_id")
 
@@ -239,13 +259,43 @@ func main() {
 				return
 			}
 
+			// Check if the quest requires an image
+			if quest.ImageRequired {
+				file, handler, err := r.FormFile("uploaded_image")
+				if err != nil {
+					log.Printf("File upload error: %v", err)
+					http.Error(w, "File upload error", http.StatusBadRequest)
+					return
+				}
+				defer file.Close()
+
+				// Save the file to the server
+				filePath := fmt.Sprintf("uploads/%s_%d_%s", teamName, quest.QuestNumber, handler.Filename)
+				dst, err := os.Create(filePath)
+				if err != nil {
+					log.Printf("Error saving file: %v", err)
+					http.Error(w, "Error saving file", http.StatusInternalServerError)
+					return
+				}
+				defer dst.Close()
+
+				if _, err := io.Copy(dst, file); err != nil {
+					log.Printf("Error copying file: %v", err)
+					http.Error(w, "Error copying file", http.StatusInternalServerError)
+					return
+				}
+
+				// Log the uploaded file path
+				log.Printf("File uploaded successfully: %s", filePath)
+			}
+
 			if answer == "CODE=SKIP" {
 				// Mark the quest as skipped
 				quest.Skipped = true
 				quest.Completed = true
 				db.Save(&quest)
 				logAction(quest.TeamName, fmt.Sprintf("Skipped Quest %d", quest.QuestNumber))
-				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s", teamName), http.StatusSeeOther)
+				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s&skipped=true", teamName), http.StatusSeeOther)
 				return
 			}
 
@@ -304,10 +354,12 @@ func main() {
 
 // seedDatabase seeds the database with initial quests
 func seedDatabase() {
-	// Reset the Completed status of all quests
-	db.Model(&Quest{}).Update("Completed", false)
-	db.Model(&Quest{}).Update("Skipped", false)
-	db.Model(&Quest{}).Update("HintsUsed", 0)
+	// // Reset the Completed status of all quests
+	// db.Model(&Quest{}).Update("Completed", false)
+	// db.Model(&Quest{}).Update("Skipped", false)
+	// db.Model(&Quest{}).Update("HintsUsed", 0)
+	// Clear the database
+	db.Exec("DELETE FROM quests")
 
 	// Check if the quests are already in the database
 	var count int64
@@ -320,7 +372,7 @@ func seedDatabase() {
 	// Seed the database with quests, including hints
 	quests := []Quest{
 		{TeamName: "TEAM1", QuestNumber: 1, Text: "Find the hidden key.", CorrectAnswer: "key", ImagePath: "/static/img/key.png", Hint: "Look where you least expect it."},
-		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png", Hint: "The answer lies in the patterns."},
+		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png", Hint: "The answer lies in the patterns.", ImageRequired: true},
 		{TeamName: "TEAM1", QuestNumber: 3, Text: "Navigate the maze to the treasure.", CorrectAnswer: "maze", AudioPath: "/static/audio/maze.mp3"},
 		{TeamName: "TEAM2", QuestNumber: 1, Text: "Find the lost artifact.", CorrectAnswer: "artifact", ImagePath: "/static/images/artifact.png", Hint: "Think about ancient history."},
 		{TeamName: "TEAM2", QuestNumber: 2, Text: "Decode the ancient script.", CorrectAnswer: "decode", ImagePath: "/static/images/script.png"},
