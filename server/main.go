@@ -259,12 +259,28 @@ func main() {
 				return
 			}
 
-			// Check if the quest requires an image
 			if quest.ImageRequired {
 				file, handler, err := r.FormFile("uploaded_image")
 				if err != nil {
 					log.Printf("File upload error: %v", err)
-					http.Error(w, "File upload error", http.StatusBadRequest)
+					data := struct {
+						Username    string
+						StartTime   string
+						ElapsedTime string
+						Quest       Quest
+						SuccessMsg  string
+						ErrorMsg    string
+						SkipMsg     string
+					}{
+						Username:    teams[teamName].Username,
+						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
+						Quest:       quest,
+						SuccessMsg:  "",
+						ErrorMsg:    "File upload error",
+						SkipMsg:     "",
+					}
+					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
 				}
 				defer file.Close()
@@ -274,14 +290,48 @@ func main() {
 				dst, err := os.Create(filePath)
 				if err != nil {
 					log.Printf("Error saving file: %v", err)
-					http.Error(w, "Error saving file", http.StatusInternalServerError)
+					data := struct {
+						Username    string
+						StartTime   string
+						ElapsedTime string
+						Quest       Quest
+						SuccessMsg  string
+						ErrorMsg    string
+						SkipMsg     string
+					}{
+						Username:    teams[teamName].Username,
+						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
+						Quest:       quest,
+						SuccessMsg:  "",
+						ErrorMsg:    "Error saving file",
+						SkipMsg:     "",
+					}
+					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
 				}
 				defer dst.Close()
 
 				if _, err := io.Copy(dst, file); err != nil {
 					log.Printf("Error copying file: %v", err)
-					http.Error(w, "Error copying file", http.StatusInternalServerError)
+					data := struct {
+						Username    string
+						StartTime   string
+						ElapsedTime string
+						Quest       Quest
+						SuccessMsg  string
+						ErrorMsg    string
+						SkipMsg     string
+					}{
+						Username:    teams[teamName].Username,
+						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
+						Quest:       quest,
+						SuccessMsg:  "",
+						ErrorMsg:    "Error copying file",
+						SkipMsg:     "",
+					}
+					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
 				}
 
