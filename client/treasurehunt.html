@@ -14,13 +14,15 @@
         <h1>Welcome to the Treasure Hunt, {{.Username}}!</h1>
         
         <div class="stopwatch my-4">
-            <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p>
+            <!-- <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p> -->
             <p>Time Remaining: <span id="countdown-time">--:--:--</span></p>
 
         </div>
 
         <div class="quest-container my-4">
             <h2>Current Quest:</h2>
+            <p>Current Quest: {{.CurrentQuest}}/{{.TotalQuests}}</p>
+
             <div class="quest">
                 <p>{{.Quest.Text}}</p>
 
@@ -37,7 +39,7 @@
                 {{end}}
 
                 <!-- Hint button -->
-                {{if .Quest.Hint}}
+                {{if .Quest.Hint}} <!-- FIX WHEN FILE ERROR -->
                 <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">Show Hint</button>
                 <p id="hintText" class="text-warning" style="display:none;">Hint: {{.Quest.Hint}}</p>
                 {{end}}
@@ -148,7 +150,8 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="/static/js/hintHandler.js"></script>
     <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/timerHandler.js"></script>    
-    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script>
+    <!-- <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script> -->
+    <script src="/static/js/gamefinishedHandler.js"></script>
 
 </body>
 

@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", function() {
-    console.log("JavaScript file loaded and DOM content is ready.");
 
     const startTimeElement = document.getElementById("start-time");
     const countdownElement = document.getElementById("countdown-time");
