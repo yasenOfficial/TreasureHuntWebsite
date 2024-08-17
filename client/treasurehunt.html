@@ -44,7 +44,7 @@
                 <p id="hintText" class="text-warning" style="display:none;">Hint: {{.Quest.Hint}}</p>
                 {{end}}
 
-                <form action="/submit" method="post" enctype="multipart/form-data"> <!-- Enable file upload -->
+                <form id="quest-form" action="/submit" method="post" enctype="multipart/form-data"> <!-- Enable file upload -->
                     <input type="hidden" id="quest_id" name="quest_id" value="{{.Quest.ID}}">
 
                     <!-- File upload form (only shown if ImageRequired is true) -->

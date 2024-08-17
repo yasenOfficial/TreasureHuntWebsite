@@ -281,23 +281,31 @@ func main() {
 			if quest.ImageRequired {
 				file, handler, err := r.FormFile("uploaded_image")
 				if err != nil {
+					fmt.Println("No file uploaded")
 					log.Printf("File upload error: %v", err)
+					var totalQuests int64
+					db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
+
 					data := struct {
-						Username    string
-						StartTime   string
-						ElapsedTime string
-						Quest       Quest
-						SuccessMsg  string
-						ErrorMsg    string
-						SkipMsg     string
+						Username     string
+						StartTime    string
+						ElapsedTime  string
+						Quest        Quest
+						SuccessMsg   string
+						ErrorMsg     string
+						SkipMsg      string
+						CurrentQuest int
+						TotalQuests  int64
 					}{
-						Username:    teams[teamName].Username,
-						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
-						Quest:       quest,
-						SuccessMsg:  "",
-						ErrorMsg:    "File upload error",
-						SkipMsg:     "",
+						Username:     teams[teamName].Username,
+						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
+						Quest:        quest,
+						SuccessMsg:   "",
+						ErrorMsg:     "No file uploaded",
+						SkipMsg:      "",
+						CurrentQuest: quest.QuestNumber,
+						TotalQuests:  totalQuests,
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -308,23 +316,31 @@ func main() {
 				filePath := fmt.Sprintf("uploads/%s_%d_%s", teamName, quest.QuestNumber, handler.Filename)
 				dst, err := os.Create(filePath)
 				if err != nil {
+					fmt.Println("Error saving file, try again")
 					log.Printf("Error saving file: %v", err)
+					var totalQuests int64
+					db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
+
 					data := struct {
-						Username    string
-						StartTime   string
-						ElapsedTime string
-						Quest       Quest
-						SuccessMsg  string
-						ErrorMsg    string
-						SkipMsg     string
+						Username     string
+						StartTime    string
+						ElapsedTime  string
+						Quest        Quest
+						SuccessMsg   string
+						ErrorMsg     string
+						SkipMsg      string
+						CurrentQuest int
+						TotalQuests  int64
 					}{
-						Username:    teams[teamName].Username,
-						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
-						Quest:       quest,
-						SuccessMsg:  "",
-						ErrorMsg:    "Error saving file",
-						SkipMsg:     "",
+						Username:     teams[teamName].Username,
+						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
+						Quest:        quest,
+						SuccessMsg:   "",
+						ErrorMsg:     "Error saving file, try again",
+						SkipMsg:      "",
+						CurrentQuest: quest.QuestNumber,
+						TotalQuests:  totalQuests,
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -332,23 +348,32 @@ func main() {
 				defer dst.Close()
 
 				if _, err := io.Copy(dst, file); err != nil {
+					fmt.Println("Error copying file")
 					log.Printf("Error copying file: %v", err)
+
+					var totalQuests int64
+					db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
+
 					data := struct {
-						Username    string
-						StartTime   string
-						ElapsedTime string
-						Quest       Quest
-						SuccessMsg  string
-						ErrorMsg    string
-						SkipMsg     string
+						Username     string
+						StartTime    string
+						ElapsedTime  string
+						Quest        Quest
+						SuccessMsg   string
+						ErrorMsg     string
+						SkipMsg      string
+						CurrentQuest int
+						TotalQuests  int64
 					}{
-						Username:    teams[teamName].Username,
-						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
-						Quest:       quest,
-						SuccessMsg:  "",
-						ErrorMsg:    "Error copying file",
-						SkipMsg:     "",
+						Username:     teams[teamName].Username,
+						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
+						Quest:        quest,
+						SuccessMsg:   "",
+						ErrorMsg:     "Error copying file",
+						SkipMsg:      "",
+						CurrentQuest: quest.QuestNumber,
+						TotalQuests:  totalQuests,
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -484,7 +509,7 @@ func seedDatabase() {
 		{TeamName: "TEAM1", QuestNumber: 1, Text: "Find the hidden key.", CorrectAnswer: "key", ImagePath: "/static/img/key.png", Hint: "Look where you least expect it."},
 		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png", Hint: "The answer lies in the patterns.", ImageRequired: true},
 		{TeamName: "TEAM1", QuestNumber: 3, Text: "Navigate the maze to the treasure.", CorrectAnswer: "maze", AudioPath: "/static/audio/maze.mp3"},
-		{TeamName: "TEAM1", QuestNumber: 3, Text: "Discover the sea.", CorrectAnswer: "sea", Hint: "The answer is in the image.", ImagePath: "/static/img/sea.jpg"},
+		{TeamName: "TEAM1", QuestNumber: 4, Text: "Discover the sea.", CorrectAnswer: "sea", Hint: "The answer is in the image.", ImagePath: "/static/img/sea.jpg"},
 		{TeamName: "TEAM2", QuestNumber: 1, Text: "Find the lost artifact.", CorrectAnswer: "artifact", ImagePath: "/static/images/artifact.png", Hint: "Think about ancient history."},
 		{TeamName: "TEAM2", QuestNumber: 2, Text: "Decode the ancient script.", CorrectAnswer: "decode", ImagePath: "/static/images/script.png"},
 		{TeamName: "TEAM2", QuestNumber: 3, Text: "Escape the labyrinth.", CorrectAnswer: "escape", ImagePath: "/static/images/labyrinth.png", Hint: "Follow the left wall."},
