@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,7 +37,7 @@ type Quest struct {
 	Completed     bool
 	Skipped       bool
 	HintsUsed     int
-	ImageRequired bool // New field to indicate if an image is required
+	FileRequired  bool // New field to indicate if an image is required
 }
 
 var (
@@ -278,7 +279,7 @@ func main() {
 				return
 			}
 
-			if quest.ImageRequired {
+			if quest.FileRequired {
 				file, handler, err := r.FormFile("uploaded_image")
 				if err != nil {
 					fmt.Println("No file uploaded")
@@ -384,7 +385,7 @@ func main() {
 			}
 
 			// Check the answer
-			if answer == quest.CorrectAnswer {
+			if strings.ToLower(answer) == quest.CorrectAnswer {
 				// Mark the current quest as completed
 				quest.Completed = true
 				db.Save(&quest)
@@ -507,12 +508,15 @@ func seedDatabase() {
 	// Seed the database with quests, including hints
 	quests := []Quest{
 		{TeamName: "TEAM1", QuestNumber: 1, Text: "Find the hidden key.", CorrectAnswer: "key", ImagePath: "/static/img/key.png", Hint: "Look where you least expect it."},
-		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png", Hint: "The answer lies in the patterns.", ImageRequired: true},
+		{TeamName: "TEAM1", QuestNumber: 2, Text: "Solve the ancient puzzle.", CorrectAnswer: "puzzle", ImagePath: "/static/img/puzzle.png", Hint: "The answer lies in the patterns.", FileRequired: true},
 		{TeamName: "TEAM1", QuestNumber: 3, Text: "Navigate the maze to the treasure.", CorrectAnswer: "maze", AudioPath: "/static/audio/maze.mp3"},
-		{TeamName: "TEAM1", QuestNumber: 4, Text: "Discover the sea.", CorrectAnswer: "sea", Hint: "The answer is in the image.", ImagePath: "/static/img/sea.jpg"},
+		{TeamName: "TEAM1", QuestNumber: 4, Text: "No Answer.", CorrectAnswer: "", Hint: "The answer is in the image.", FileRequired: true},
+		{TeamName: "TEAM1", QuestNumber: 5, Text: "Discover the sea.", CorrectAnswer: "sea", Hint: "The answer is in the image.", ImagePath: "/static/img/sea.jpg"},
+
 		{TeamName: "TEAM2", QuestNumber: 1, Text: "Find the lost artifact.", CorrectAnswer: "artifact", ImagePath: "/static/images/artifact.png", Hint: "Think about ancient history."},
 		{TeamName: "TEAM2", QuestNumber: 2, Text: "Decode the ancient script.", CorrectAnswer: "decode", ImagePath: "/static/images/script.png"},
 		{TeamName: "TEAM2", QuestNumber: 3, Text: "Escape the labyrinth.", CorrectAnswer: "escape", ImagePath: "/static/images/labyrinth.png", Hint: "Follow the left wall."},
+
 		{TeamName: "TEAM3", QuestNumber: 1, Text: "Discover the secret map.", CorrectAnswer: "map", ImagePath: "/static/images/map.png"},
 		{TeamName: "TEAM3", QuestNumber: 2, Text: "Unlock the treasure chest.", CorrectAnswer: "chest", ImagePath: "/static/images/chest.png", Hint: "The key is hidden nearby."},
 		{TeamName: "TEAM3", QuestNumber: 3, Text: "Defeat the guardian.", CorrectAnswer: "guardian", ImagePath: "/static/images/guardian.png"},

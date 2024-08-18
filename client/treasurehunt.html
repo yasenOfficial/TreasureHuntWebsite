@@ -12,7 +12,7 @@
 <body>
     <div class="container mt-5">
         <h1>Welcome to the Treasure Hunt, {{.Username}}!</h1>
-        
+
         <div class="stopwatch my-4">
             <!-- <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p> -->
             <p>Time Remaining: <span id="countdown-time">--:--:--</span></p>
@@ -44,27 +44,33 @@
                 <p id="hintText" class="text-warning" style="display:none;">Hint: {{.Quest.Hint}}</p>
                 {{end}}
 
-                <form id="quest-form" action="/submit" method="post" enctype="multipart/form-data"> <!-- Enable file upload -->
+                <form id="quest-form" action="/submit" method="post" enctype="multipart/form-data">
+                    <!-- Enable file upload -->
                     <input type="hidden" id="quest_id" name="quest_id" value="{{.Quest.ID}}">
 
-                    <!-- File upload form (only shown if ImageRequired is true) -->
-                    {{if .Quest.ImageRequired}}
+                    <!-- File upload form (only shown if FileRequired is true) -->
+                    {{if .Quest.FileRequired}}
                     <div class="form-group">
                         <label for="uploaded_image">Upload Image:</label>
                         <input type="file" id="uploaded_image" name="uploaded_image" class="form-control-file">
                     </div>
                     {{end}}
 
+                    {{if ne .Quest.CorrectAnswer "" }}
                     <div class="form-group">
                         <label for="answer">Your Answer:</label>
                         <input type="text" id="answer" name="answer" class="form-control" required>
                     </div>
+                    {{end}}
+
                     <button type="submit" class="btn btn-primary">Submit Answer</button>
                 </form>
 
+
                 <!-- Modals for Error, Success, and Skipped messages (if applicable) -->
                 {{if .ErrorMsg}}
-                <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+                <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel"
+                    aria-hidden="true">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-warning text-white">
@@ -90,7 +96,8 @@
                 {{end}}
 
                 {{if .SuccessMsg}}
-                <div class="modal fade" id="successModal" tabindex="-1" role="dialog" aria-labelledby="successModalLabel" aria-hidden="true">
+                <div class="modal fade" id="successModal" tabindex="-1" role="dialog"
+                    aria-labelledby="successModalLabel" aria-hidden="true">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-success text-white">
@@ -116,7 +123,8 @@
                 {{end}}
 
                 {{if .SkipMsg}}
-                <div class="modal fade" id="skipModal" tabindex="-1" role="dialog" aria-labelledby="skipModalLabel" aria-hidden="true">
+                <div class="modal fade" id="skipModal" tabindex="-1" role="dialog" aria-labelledby="skipModalLabel"
+                    aria-hidden="true">
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-danger text-dark">
@@ -149,7 +157,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="/static/js/hintHandler.js"></script>
-    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/timerHandler.js"></script>    
+    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/timerHandler.js"></script>
     <!-- <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script> -->
     <script src="/static/js/gamefinishedHandler.js"></script>
 
