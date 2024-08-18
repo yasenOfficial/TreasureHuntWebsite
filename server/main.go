@@ -27,31 +27,38 @@ type Team struct {
 
 type Quest struct {
 	gorm.Model
-	TeamName      string
-	QuestNumber   int
-	ImagePath     string
-	Text          string
-	CorrectAnswer string
-	Hint          string
-	AudioPath     string
-	Completed     bool
-	Skipped       bool
-	HintsUsed     int
-	FileRequired  bool
+	TeamName       string
+	QuestNumber    int
+	ImagePath      string
+	Text           string
+	CorrectAnswers string
+	Hint           string
+	AudioPath      string
+	Completed      bool
+	Skipped        bool
+	HintsUsed      int
+	FileRequired   bool
 
-	TimerRequired bool
-	TimerDuration time.Duration
-	TimerEndTime  time.Time
-	TimerRunning  bool
-	TimerFinished bool
+	QuestTimerRequired bool
+	QuestTimerDuration time.Duration
+	QuestTimerEndTime  time.Time
+	QuestTimerRunning  bool
+	QuestTimerFinished bool
+
+	HintTimerRequired bool
+	HintTimerDuration time.Duration
+	HintTimerEndTime  time.Time
+	HintTimerRunning  bool
+	HintTimerFinished bool
 }
 
 var (
-	db          *gorm.DB
-	teams       = map[string]*Team{}
-	mu          sync.Mutex
-	templates   *template.Template
-	templateDir = "../client"
+	db              *gorm.DB
+	teams           = map[string]*Team{}
+	mu              sync.Mutex
+	templates       *template.Template
+	templateDir     = "../client"
+	timerPopupShown = false
 )
 
 func init() {
@@ -207,27 +214,89 @@ func main() {
 			http.Redirect(w, r, fmt.Sprintf("/gamefinished?team=%s&hintCount=%d&skipCount=%d", teamName, hintCount, questCount), http.StatusSeeOther)
 			return
 		}
-
-		if quest.TimerRequired && !quest.TimerRunning && !quest.TimerFinished {
-			quest.TimerEndTime = time.Now().Add(quest.TimerDuration)
-			quest.TimerRunning = true
-			quest.TimerFinished = false
+		if quest.HintTimerRequired && !quest.HintTimerRunning && !quest.HintTimerFinished {
+			quest.HintTimerEndTime = time.Now().Add(quest.HintTimerDuration)
+			quest.HintTimerRunning = true
+			quest.HintTimerFinished = false
 			db.Save(&quest)
-			// fmt.Println("Timer started for quest", quest.QuestNumber)
-			// fmt.Println("Timer will end at", quest.TimerEndTime)
-			// fmt.Println("Timer duration", quest.TimerDuration)
-			// fmt.Println("Time remaining", time.Until(quest.TimerEndTime))
+			// fmt.Println("Timer started for hint", quest.QuestNumber)
+			// fmt.Println("Timer will end at", quest.HintTimerEndTime)
+			// fmt.Println("Timer duration", quest.HintTimerDuration)
+			// fmt.Println("Time remaining", time.Until(quest.HintTimerEndTime))
 		}
 
-		var timerRemaining string
-		if quest.TimerRequired {
-			remaining := time.Until(quest.TimerEndTime)
+		var hintTimerRemaining string
+		if quest.HintTimerRequired {
+			remaining := time.Until(quest.HintTimerEndTime)
 			if remaining > 0 {
-				timerRemaining = remaining.String()
-			} else {
-				quest.TimerRunning = false
-				quest.TimerFinished = true
+				hintTimerRemaining = remaining.String()
+			} else if !timerPopupShown {
+				timerPopupShown = true
+				quest.HintTimerRunning = false
+				quest.HintTimerFinished = true
 				db.Save(&quest)
+			}
+		}
+
+		if quest.QuestTimerRequired && !quest.QuestTimerRunning && !quest.QuestTimerFinished {
+			quest.QuestTimerEndTime = time.Now().Add(quest.QuestTimerDuration)
+			quest.QuestTimerRunning = true
+			quest.QuestTimerFinished = false
+			db.Save(&quest)
+			// fmt.Println("Timer started for quest", quest.QuestNumber)
+			// fmt.Println("Timer will end at", quest.QuestTimerEndTime)
+			// fmt.Println("Timer duration", quest.QuestTimerDuration)
+			// fmt.Println("Time remaining", time.Until(quest.QuestTimerEndTime))
+		}
+
+		var questTimerRemaining string
+		if quest.QuestTimerRequired {
+			remaining := time.Until(quest.QuestTimerEndTime)
+			if remaining > 0 {
+				questTimerRemaining = remaining.String()
+			} else if !timerPopupShown {
+				timerPopupShown = true
+				quest.QuestTimerRunning = false
+				quest.QuestTimerFinished = true
+				db.Save(&quest)
+
+				data := struct {
+					Username            string
+					StartTime           string
+					ElapsedTime         string
+					Quest               Quest
+					SuccessMsg          string
+					ErrorMsg            string
+					SkipMsg             string
+					CurrentQuest        int
+					TotalQuests         int64
+					QuestTimerRemaining string
+					QuestTimerEndTime   string
+					HintTimerRemaining  string
+					HintTimerEndTime    string
+				}{
+					Username:            team.Username,
+					StartTime:           team.Stopwatch.Format(time.RFC3339),
+					ElapsedTime:         elapsed.String(),
+					Quest:               quest,
+					SuccessMsg:          "Quest timer has ended!",
+					ErrorMsg:            "",
+					SkipMsg:             "",
+					CurrentQuest:        quest.QuestNumber,
+					TotalQuests:         totalQuests,
+					QuestTimerRemaining: questTimerRemaining,
+					QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
+					HintTimerRemaining:  hintTimerRemaining,
+					HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
+				}
+
+				err = templates.ExecuteTemplate(w, "treasurehunt.html", data)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+
+				return
+
 			}
 		}
 
@@ -243,29 +312,33 @@ func main() {
 		}
 
 		data := struct {
-			Username       string
-			StartTime      string
-			ElapsedTime    string
-			Quest          Quest
-			SuccessMsg     string
-			ErrorMsg       string
-			SkipMsg        string
-			CurrentQuest   int
-			TotalQuests    int64
-			TimerRemaining string
-			TimerEndTime   string
+			Username            string
+			StartTime           string
+			ElapsedTime         string
+			Quest               Quest
+			SuccessMsg          string
+			ErrorMsg            string
+			SkipMsg             string
+			CurrentQuest        int
+			TotalQuests         int64
+			QuestTimerRemaining string
+			QuestTimerEndTime   string
+			HintTimerRemaining  string
+			HintTimerEndTime    string
 		}{
-			Username:       team.Username,
-			StartTime:      team.Stopwatch.Format(time.RFC3339),
-			ElapsedTime:    elapsed.String(),
-			Quest:          quest,
-			SuccessMsg:     successMsg,
-			ErrorMsg:       errorMsg,
-			SkipMsg:        skipMsg,
-			CurrentQuest:   quest.QuestNumber,
-			TotalQuests:    totalQuests,
-			TimerRemaining: timerRemaining,
-			TimerEndTime:   quest.TimerEndTime.Format(time.RFC3339),
+			Username:            team.Username,
+			StartTime:           team.Stopwatch.Format(time.RFC3339),
+			ElapsedTime:         elapsed.String(),
+			Quest:               quest,
+			SuccessMsg:          successMsg,
+			ErrorMsg:            errorMsg,
+			SkipMsg:             skipMsg,
+			CurrentQuest:        quest.QuestNumber,
+			TotalQuests:         totalQuests,
+			QuestTimerRemaining: questTimerRemaining,
+			QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
+			HintTimerRemaining:  hintTimerRemaining,
+			HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
 		}
 
 		err = templates.ExecuteTemplate(w, "treasurehunt.html", data)
@@ -302,37 +375,50 @@ func main() {
 				return
 			}
 
-			if quest.TimerRequired && time.Now().Before(quest.TimerEndTime) {
+			if quest.QuestTimerRequired && time.Now().Before(quest.QuestTimerEndTime) {
 				var totalQuests int64
 				db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
 
 				data := struct {
-					Username       string
-					StartTime      string
-					ElapsedTime    string
-					Quest          Quest
-					SuccessMsg     string
-					ErrorMsg       string
-					SkipMsg        string
-					CurrentQuest   int
-					TotalQuests    int64
-					TimerRemaining string
-					TimerEndTime   string
+					Username            string
+					StartTime           string
+					ElapsedTime         string
+					Quest               Quest
+					SuccessMsg          string
+					ErrorMsg            string
+					SkipMsg             string
+					CurrentQuest        int
+					TotalQuests         int64
+					QuestTimerRemaining string
+					QuestTimerEndTime   string
+					HintTimerRemaining  string
+					HintTimerEndTime    string
 				}{
-					Username:       teams[teamName].Username,
-					StartTime:      teams[teamName].Stopwatch.Format(time.RFC3339),
-					ElapsedTime:    time.Since(teams[teamName].Stopwatch).String(),
-					Quest:          quest,
-					SuccessMsg:     "",
-					ErrorMsg:       "Wait for the quest timer to end!",
-					SkipMsg:        "",
-					CurrentQuest:   quest.QuestNumber,
-					TotalQuests:    totalQuests,
-					TimerRemaining: time.Until(quest.TimerEndTime).String(),
-					TimerEndTime:   quest.TimerEndTime.Format(time.RFC3339),
+					Username:            teams[teamName].Username,
+					StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
+					ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
+					Quest:               quest,
+					SuccessMsg:          "",
+					ErrorMsg:            "Wait for the quest timer to end!",
+					SkipMsg:             "",
+					CurrentQuest:        quest.QuestNumber,
+					TotalQuests:         totalQuests,
+					QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
+					QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
+					HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
+					HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
 				}
 				templates.ExecuteTemplate(w, "treasurehunt.html", data)
 				return
+			}
+
+			correctAnswers := strings.Split(quest.CorrectAnswers, "|")
+			isCorrect := false
+			for _, correctAnswer := range correctAnswers {
+				if strings.TrimSpace(strings.ToLower(answer)) == strings.TrimSpace(strings.ToLower(correctAnswer)) {
+					isCorrect = true
+					break
+				}
 			}
 
 			if answer == "CODE=SKIP" {
@@ -354,29 +440,33 @@ func main() {
 					db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
 
 					data := struct {
-						Username       string
-						StartTime      string
-						ElapsedTime    string
-						Quest          Quest
-						SuccessMsg     string
-						ErrorMsg       string
-						SkipMsg        string
-						CurrentQuest   int
-						TotalQuests    int64
-						TimerRemaining string
-						TimerEndTime   string
+						Username            string
+						StartTime           string
+						ElapsedTime         string
+						Quest               Quest
+						SuccessMsg          string
+						ErrorMsg            string
+						SkipMsg             string
+						CurrentQuest        int
+						TotalQuests         int64
+						QuestTimerRemaining string
+						QuestTimerEndTime   string
+						HintTimerRemaining  string
+						HintTimerEndTime    string
 					}{
-						Username:       teams[teamName].Username,
-						StartTime:      teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:    time.Since(teams[teamName].Stopwatch).String(),
-						Quest:          quest,
-						SuccessMsg:     "",
-						ErrorMsg:       "No file uploaded",
-						SkipMsg:        "",
-						CurrentQuest:   quest.QuestNumber,
-						TotalQuests:    totalQuests,
-						TimerRemaining: time.Until(quest.TimerEndTime).String(),
-						TimerEndTime:   quest.TimerEndTime.Format(time.RFC3339),
+						Username:            teams[teamName].Username,
+						StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
+						Quest:               quest,
+						SuccessMsg:          "",
+						ErrorMsg:            "No file uploaded",
+						SkipMsg:             "",
+						CurrentQuest:        quest.QuestNumber,
+						TotalQuests:         totalQuests,
+						QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
+						QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
+						HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
+						HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -393,29 +483,33 @@ func main() {
 					db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
 
 					data := struct {
-						Username       string
-						StartTime      string
-						ElapsedTime    string
-						Quest          Quest
-						SuccessMsg     string
-						ErrorMsg       string
-						SkipMsg        string
-						CurrentQuest   int
-						TotalQuests    int64
-						TimerRemaining string
-						TimerEndTime   string
+						Username            string
+						StartTime           string
+						ElapsedTime         string
+						Quest               Quest
+						SuccessMsg          string
+						ErrorMsg            string
+						SkipMsg             string
+						CurrentQuest        int
+						TotalQuests         int64
+						QuestTimerRemaining string
+						QuestTimerEndTime   string
+						HintTimerRemaining  string
+						HintTimerEndTime    string
 					}{
-						Username:       teams[teamName].Username,
-						StartTime:      teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:    time.Since(teams[teamName].Stopwatch).String(),
-						Quest:          quest,
-						SuccessMsg:     "",
-						ErrorMsg:       "Error saving file, try again",
-						SkipMsg:        "",
-						CurrentQuest:   quest.QuestNumber,
-						TotalQuests:    totalQuests,
-						TimerRemaining: time.Until(quest.TimerEndTime).String(),
-						TimerEndTime:   quest.TimerEndTime.Format(time.RFC3339),
+						Username:            teams[teamName].Username,
+						StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
+						Quest:               quest,
+						SuccessMsg:          "",
+						ErrorMsg:            "Error saving file, try again",
+						SkipMsg:             "",
+						CurrentQuest:        quest.QuestNumber,
+						TotalQuests:         totalQuests,
+						QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
+						QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
+						HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
+						HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -430,27 +524,33 @@ func main() {
 					db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
 
 					data := struct {
-						Username       string
-						StartTime      string
-						ElapsedTime    string
-						Quest          Quest
-						SuccessMsg     string
-						ErrorMsg       string
-						SkipMsg        string
-						CurrentQuest   int
-						TotalQuests    int64
-						TimerRemaining string
+						Username            string
+						StartTime           string
+						ElapsedTime         string
+						Quest               Quest
+						SuccessMsg          string
+						ErrorMsg            string
+						SkipMsg             string
+						CurrentQuest        int
+						TotalQuests         int64
+						QuestTimerRemaining string
+						QuestTimerEndTime   string
+						HintTimerRemaining  string
+						HintTimerEndTime    string
 					}{
-						Username:       teams[teamName].Username,
-						StartTime:      teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:    time.Since(teams[teamName].Stopwatch).String(),
-						Quest:          quest,
-						SuccessMsg:     "",
-						ErrorMsg:       "Error copying file",
-						SkipMsg:        "",
-						CurrentQuest:   quest.QuestNumber,
-						TotalQuests:    totalQuests,
-						TimerRemaining: time.Until(quest.TimerEndTime).String(),
+						Username:            teams[teamName].Username,
+						StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
+						Quest:               quest,
+						SuccessMsg:          "",
+						ErrorMsg:            "Error copying file",
+						SkipMsg:             "",
+						CurrentQuest:        quest.QuestNumber,
+						TotalQuests:         totalQuests,
+						QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
+						QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
+						HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
+						HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -461,7 +561,7 @@ func main() {
 			}
 
 			// Check the answer
-			if strings.ToLower(answer) == quest.CorrectAnswer {
+			if isCorrect {
 				// Mark the current quest as completed
 				quest.Completed = true
 				db.Save(&quest)
@@ -584,103 +684,67 @@ func seedDatabase() {
 	// Seed the database with quests, including hints
 	quests := []Quest{
 		{
-			TeamName:      "TEAM1",
-			QuestNumber:   1,
-			Text:          "Find the hidden key.",
-			CorrectAnswer: "key",
-			ImagePath:     "/static/img/key.png",
-			Hint:          "Look where you least expect it.",
-			TimerRequired: true,
-			TimerDuration: 15 * time.Second,
+			TeamName:           "TEAM1",
+			QuestNumber:        1,
+			Text:               "В Плик №2 разполагате с предмети, които ще ви насочат коя е локацията, към която да поемете. В допълнение към тях, за да се ориентирате за името на тази забележителност,  получавате и тази анаграма: гарланех халими.",
+			CorrectAnswers:     "църква свети архангел михаил|свети архангел михаил|св. архангел михаил|архангел михаил",
+			Hint:               "Църквата е с име на главния архангел, главния пазител на небесното царство и главен страж на Божия закон, който превежда душите на мъртвите до ада или рая. ",
+			QuestTimerRequired: false,
+			HintTimerRequired:  true,
+			HintTimerDuration:  2 * time.Minute,
 		},
 		{
-			TeamName:      "TEAM1",
-			QuestNumber:   2,
-			Text:          "Solve the ancient puzzle.",
-			CorrectAnswer: "puzzle",
-			ImagePath:     "/static/img/puzzle.png",
-			Hint:          "The answer lies in the patterns.",
-			FileRequired:  true,
-			TimerRequired: false,
+			TeamName:           "TEAM1",
+			QuestNumber:        2,
+			Text:               "Когато пристигнете се снимайте пред входа като протегнете длан напред и я сложите върху дланта на останалите.",
+			CorrectAnswers:     "",
+			FileRequired:       true,
+			QuestTimerRequired: false,
 		},
 		{
-			TeamName:      "TEAM1",
-			QuestNumber:   3,
-			Text:          "Navigate the maze to the treasure.",
-			CorrectAnswer: "maze",
-			AudioPath:     "/static/audio/maze.mp3",
-			TimerRequired: false,
+			TeamName:       "TEAM1",
+			QuestNumber:    3,
+			Text:           "Легендата разказва, че църквата е построена през XII век. За да благодарят на Бога за подкрепата в успешната битка през 1190 г. в Тревненския проход, братята Асеневци построили три църкви, посветени на Св. Архангел Михаил. Едната от тях била в Трявна. Тя била опожарена при голямото кърджалийско нападение над Трявна през 1798 г. После тревненци се съвзели, ремонтирали църквата си и подновили служението. \nВлезте в църквата и запалете свещичката, с която разполагате (има по свещ за всеки).\n Timer-ът вече отброява 10 минутки от началото на quest-а, за да имате време за себе си в църквата. Ще можете да продължите нататък с quest-а след като минат 10-те минути. Когато времето изтече се съберете в двора на Църквата, направете снимка на цвете от двора на църквата и я изпратете.",
+			CorrectAnswers: "",
+			FileRequired:   true,
+			// QuestTimerRequired: true,
+			// QuestTimerDuration: 10 * time.Minute,
 		},
 		{
-			TeamName:      "TEAM1",
-			QuestNumber:   4,
-			Text:          "No Answer.",
-			CorrectAnswer: "",
-			Hint:          "The answer is in the image.",
-			FileRequired:  true,
-			TimerRequired: false,
+			TeamName:           "TEAM1",
+			QuestNumber:        4,
+			Text:               "Разполагате с аудио, което да ви насочи към забележителността, до която трябва да стигнете. След като отговорите на quest-а стигнете до тази локация",
+			CorrectAnswers:     "часовникова кула|часовниковата кула|часовниковата кула в трявна|часовникова кула трявна|часовниковата кула трявна",
+			AudioPath:          "/static/audio/clockTowerBells.mp3",
+			QuestTimerRequired: false,
+		}, {
+			TeamName:           "TEAM1",
+			QuestNumber:        5,
+			Text:               "Помолете минувач да ви снима пред Часовниковата кула като по най-оригинален начин се направете на часовници, часовникови механизми, махала, стрелки, циферблат, числа и т.н. ",
+			CorrectAnswers:     "",
+			FileRequired:       true,
+			QuestTimerRequired: false,
 		},
 		{
-			TeamName:      "TEAM1",
-			QuestNumber:   5,
-			Text:          "Discover the sea.",
-			CorrectAnswer: "sea",
-			Hint:          "The answer is in the image.",
-			ImagePath:     "/static/img/sea.jpg",
-			TimerRequired: false,
-		},
-
-		{
-			TeamName:      "TEAM2",
-			QuestNumber:   1,
-			Text:          "Find the lost artifact.",
-			CorrectAnswer: "artifact",
-			ImagePath:     "/static/images/artifact.png",
-			Hint:          "Think about ancient history.",
-			TimerRequired: false,
+			TeamName:           "TEAM1",
+			QuestNumber:        6,
+			Text:               "Век и половина след построяването на кулата към часовниковия механизъм е добавен магнетофон, благодарение на който всяка вечер точно в 22 ч. зазвучава песента по стихотворението „Неразделни“ на Пенчо Славейков.\nКои са основните герои в песента по текст на стихотворението “Неразделни”? ",
+			CorrectAnswers:     "калина и явор|калина, явор|калина,явор|явор и калина|явор, калина|явор,калина",
+			Hint:               "Разполагате с кратко аудио на песента.",
+			AudioPath:          "/static/audio/nerazdelni.mp3",
+			FileRequired:       true,
+			QuestTimerRequired: false,
 		},
 		{
-			TeamName:      "TEAM2",
-			QuestNumber:   2,
-			Text:          "Decode the ancient script.",
-			CorrectAnswer: "decode",
-			ImagePath:     "/static/images/script.png",
-			TimerRequired: false,
-		},
-		{
-			TeamName:      "TEAM2",
-			QuestNumber:   3,
-			Text:          "Escape the labyrinth.",
-			CorrectAnswer: "escape",
-			ImagePath:     "/static/images/labyrinth.png",
-			Hint:          "Follow the left wall.",
-			TimerRequired: false,
-		},
-
-		{
-			TeamName:      "TEAM3",
-			QuestNumber:   1,
-			Text:          "Discover the secret map.",
-			CorrectAnswer: "map",
-			ImagePath:     "/static/images/map.png",
-			TimerRequired: false,
-		},
-		{
-			TeamName:      "TEAM3",
-			QuestNumber:   2,
-			Text:          "Unlock the treasure chest.",
-			CorrectAnswer: "chest",
-			ImagePath:     "/static/images/chest.png",
-			Hint:          "The key is hidden nearby.",
-			TimerRequired: false,
-		},
-		{
-			TeamName:      "TEAM3",
-			QuestNumber:   3,
-			Text:          "Defeat the guardian.",
-			CorrectAnswer: "guardian",
-			ImagePath:     "/static/images/guardian.png",
-			TimerRequired: false,
+			TeamName:           "TEAM1",
+			QuestNumber:        7,
+			Text:               "Разберете от коя забележителност е тази снимка (например питайте хората от Трявна). Как се казва тази забележителност?",
+			CorrectAnswers:     "старото школо|старата школа|старата школа трявна|старото школо трявна",
+			Hint:               "Името на тази забележителност в превод на съвременен български език би било: “Старото училище”, но в миналото думата училище е била заместена с друга дума, която е означава същото. ",
+			ImagePath:          "/static/sh.png",
+			QuestTimerRequired: false,
+			HintTimerRequired:  true,
+			HintTimerDuration:  2 * time.Minute,
 		},
 	}
 

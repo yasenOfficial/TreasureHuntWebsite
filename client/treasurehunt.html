@@ -43,8 +43,15 @@
 
                 <!-- Hint button -->
                 {{if .Quest.Hint}} <!-- FIX WHEN FILE ERROR -->
-                <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">Show Hint</button>
+                <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">
+                    Show Hint 
+                    {{if .HintTimerRemaining}}
+                        <p><span id="hint-timer"> {{.HintTimerRemaining}}</span></p>
+                        <span id="hint-timer-end-time" data-end-time="{{.HintTimerEndTime}}"></span>
+                    {{end}}
+                </button>
                 <p id="hintText" class="text-warning" style="display:none;">Hint: {{.Quest.Hint}}</p>
+                    
                 {{end}}
 
                 <form id="quest-form" action="/submit" method="post" enctype="multipart/form-data">
@@ -59,17 +66,17 @@
                     </div>
                     {{end}}
 
-                    {{if ne .Quest.CorrectAnswer "" }}
+                    {{if ne .Quest.CorrectAnswers "" }}
                     <div class="form-group">
                         <label for="answer">Your Answer:</label>
                         <input type="text" id="answer" name="answer" class="form-control" required>
                     </div>
                     {{end}}
 
-                    {{if .TimerRemaining}}
-                    <p>Quest Timer:<span id="timer"> {{.TimerRemaining}}</span></p>
+                    {{if .QuestTimerRemaining}}
+                    <p>Quest Timer:<span id="quest-timer"> {{.QuestTimerRemaining}}</span></p>
                     
-                    <span id="timer-end-time" data-end-time="{{.TimerEndTime}}"></span>
+                    <span id="quest-timer-end-time" data-end-time="{{.QuestTimerEndTime}}"></span>
 
                     {{end}}
                     <button id="submit-btn" type="submit" class="btn btn-primary">Submit Answer</button>
@@ -110,7 +117,7 @@
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-success text-white">
-                                <h5 class="modal-title" id="successModalLabel">Congratulations!</h5>
+                                <h5 class="modal-title" id="successModalLabel">Success!</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>

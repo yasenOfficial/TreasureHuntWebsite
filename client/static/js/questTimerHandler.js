@@ -1,8 +1,8 @@
-const DEBUG = true; // Set to false to disable debugging logs
+const DEBUG = false; // Set to false to disable debugging logs
 
 document.addEventListener("DOMContentLoaded", function() {
-    const timerEndTimeElement = document.getElementById("timer-end-time");
-    const timerRemainingElement = document.getElementById("timer");
+    const timerEndTimeElement = document.getElementById("quest-timer-end-time");
+    const timerRemainingElement = document.getElementById("quest-timer");
 
     if (timerEndTimeElement && timerRemainingElement) {
         // Debug: Check if the element and data are found
@@ -37,6 +37,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (DEBUG) {
                     console.log("Timer expired");
                 }
+
+                // Fetch and reload the current URL
+                // const currentUrl = window.location.href;
+                window.location.reload(); // Reload the page with the current URL
+
                 return;
             }
 
