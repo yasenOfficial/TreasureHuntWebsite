@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var hintText = document.getElementById("hintText");
     var hintCount = document.getElementById("hintCount");
     var questId = hintButton ? hintButton.getAttribute("data-quest-id") : null;
-    console.log("questId: " + questId);
+    // console.log("questId: " + questId);
 
 
     // Check if the hint has already been shown by looking in localStorage

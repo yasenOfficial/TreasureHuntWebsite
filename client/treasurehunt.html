@@ -7,6 +7,7 @@
     <title>Treasure Hunt</title>
     <link rel="stylesheet" href="/static/css/styles.css"> <!-- Link to the CSS file -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
 </head>
 
 <body>
@@ -20,8 +21,10 @@
         </div>
 
         <div class="quest-container my-4">
+            <div id ="quest-id" data-quest-id="{{.Quest.ID}}"></div>
             <h2>Current Quest:</h2>
             <p>Current Quest: {{.CurrentQuest}}/{{.TotalQuests}}</p>
+
 
             <div class="quest">
                 <p>{{.Quest.Text}}</p>
@@ -63,7 +66,13 @@
                     </div>
                     {{end}}
 
-                    <button type="submit" class="btn btn-primary">Submit Answer</button>
+                    {{if .TimerRemaining}}
+                    <p>Quest Timer:<span id="timer"> {{.TimerRemaining}}</span></p>
+                    
+                    <span id="timer-end-time" data-end-time="{{.TimerEndTime}}"></span>
+
+                    {{end}}
+                    <button id="submit-btn" type="submit" class="btn btn-primary">Submit Answer</button>
                 </form>
 
 
@@ -160,6 +169,7 @@
     <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/timerHandler.js"></script>
     <!-- <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script> -->
     <script src="/static/js/gamefinishedHandler.js"></script>
+    <script src="/static/js/questTimerHandler.js"></script>
 
 </body>
 
