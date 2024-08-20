@@ -53,12 +53,11 @@ type Quest struct {
 }
 
 var (
-	db              *gorm.DB
-	teams           = map[string]*Team{}
-	mu              sync.Mutex
-	templates       *template.Template
-	templateDir     = "../client"
-	timerPopupShown = false
+	db          *gorm.DB
+	teams       = map[string]*Team{}
+	mu          sync.Mutex
+	templates   *template.Template
+	templateDir = "../client"
 )
 
 func init() {
@@ -230,8 +229,7 @@ func main() {
 			remaining := time.Until(quest.HintTimerEndTime)
 			if remaining > 0 {
 				hintTimerRemaining = remaining.String()
-			} else if !timerPopupShown {
-				timerPopupShown = true
+			} else {
 				quest.HintTimerRunning = false
 				quest.HintTimerFinished = true
 				db.Save(&quest)
@@ -254,8 +252,7 @@ func main() {
 			remaining := time.Until(quest.QuestTimerEndTime)
 			if remaining > 0 {
 				questTimerRemaining = remaining.String()
-			} else if !timerPopupShown {
-				timerPopupShown = true
+			} else {
 				quest.QuestTimerRunning = false
 				quest.QuestTimerFinished = true
 				db.Save(&quest)
@@ -394,19 +391,39 @@ func main() {
 					HintTimerRemaining  string
 					HintTimerEndTime    string
 				}{
-					Username:            teams[teamName].Username,
-					StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
-					ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
-					Quest:               quest,
-					SuccessMsg:          "",
-					ErrorMsg:            "Wait for the quest timer to end!",
-					SkipMsg:             "",
-					CurrentQuest:        quest.QuestNumber,
-					TotalQuests:         totalQuests,
-					QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
-					QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
-					HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
-					HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
+					Username:     teams[teamName].Username,
+					StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
+					ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
+					Quest:        quest,
+					SuccessMsg:   "",
+					ErrorMsg:     "Wait for the quest timer to end!",
+					SkipMsg:      "",
+					CurrentQuest: quest.QuestNumber,
+					TotalQuests:  totalQuests,
+					QuestTimerRemaining: func() string {
+						if quest.QuestTimerRunning {
+							return time.Until(quest.QuestTimerEndTime).String()
+						}
+						return ""
+					}(),
+					QuestTimerEndTime: func() string {
+						if quest.QuestTimerRunning {
+							return quest.QuestTimerEndTime.Format(time.RFC3339)
+						}
+						return ""
+					}(),
+					HintTimerRemaining: func() string {
+						if quest.HintTimerRunning {
+							return time.Until(quest.HintTimerEndTime).String()
+						}
+						return ""
+					}(),
+					HintTimerEndTime: func() string {
+						if quest.HintTimerRunning {
+							return quest.HintTimerEndTime.Format(time.RFC3339)
+						}
+						return ""
+					}(),
 				}
 				templates.ExecuteTemplate(w, "treasurehunt.html", data)
 				return
@@ -454,19 +471,39 @@ func main() {
 						HintTimerRemaining  string
 						HintTimerEndTime    string
 					}{
-						Username:            teams[teamName].Username,
-						StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
-						Quest:               quest,
-						SuccessMsg:          "",
-						ErrorMsg:            "No file uploaded",
-						SkipMsg:             "",
-						CurrentQuest:        quest.QuestNumber,
-						TotalQuests:         totalQuests,
-						QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
-						QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
-						HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
-						HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
+						Username:     teams[teamName].Username,
+						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
+						Quest:        quest,
+						SuccessMsg:   "",
+						ErrorMsg:     "No file uploaded",
+						SkipMsg:      "",
+						CurrentQuest: quest.QuestNumber,
+						TotalQuests:  totalQuests,
+						QuestTimerRemaining: func() string {
+							if quest.QuestTimerRunning {
+								return time.Until(quest.QuestTimerEndTime).String()
+							}
+							return ""
+						}(),
+						QuestTimerEndTime: func() string {
+							if quest.QuestTimerRunning {
+								return quest.QuestTimerEndTime.Format(time.RFC3339)
+							}
+							return ""
+						}(),
+						HintTimerRemaining: func() string {
+							if quest.HintTimerRunning {
+								return time.Until(quest.HintTimerEndTime).String()
+							}
+							return ""
+						}(),
+						HintTimerEndTime: func() string {
+							if quest.HintTimerRunning {
+								return quest.HintTimerEndTime.Format(time.RFC3339)
+							}
+							return ""
+						}(),
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -497,19 +534,39 @@ func main() {
 						HintTimerRemaining  string
 						HintTimerEndTime    string
 					}{
-						Username:            teams[teamName].Username,
-						StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
-						Quest:               quest,
-						SuccessMsg:          "",
-						ErrorMsg:            "Error saving file, try again",
-						SkipMsg:             "",
-						CurrentQuest:        quest.QuestNumber,
-						TotalQuests:         totalQuests,
-						QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
-						QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
-						HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
-						HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
+						Username:     teams[teamName].Username,
+						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
+						Quest:        quest,
+						SuccessMsg:   "",
+						ErrorMsg:     "Error saving file, try again",
+						SkipMsg:      "",
+						CurrentQuest: quest.QuestNumber,
+						TotalQuests:  totalQuests,
+						QuestTimerRemaining: func() string {
+							if quest.QuestTimerRunning {
+								return time.Until(quest.QuestTimerEndTime).String()
+							}
+							return ""
+						}(),
+						QuestTimerEndTime: func() string {
+							if quest.QuestTimerRunning {
+								return quest.QuestTimerEndTime.Format(time.RFC3339)
+							}
+							return ""
+						}(),
+						HintTimerRemaining: func() string {
+							if quest.HintTimerRunning {
+								return time.Until(quest.HintTimerEndTime).String()
+							}
+							return ""
+						}(),
+						HintTimerEndTime: func() string {
+							if quest.HintTimerRunning {
+								return quest.HintTimerEndTime.Format(time.RFC3339)
+							}
+							return ""
+						}(),
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -538,19 +595,39 @@ func main() {
 						HintTimerRemaining  string
 						HintTimerEndTime    string
 					}{
-						Username:            teams[teamName].Username,
-						StartTime:           teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:         time.Since(teams[teamName].Stopwatch).String(),
-						Quest:               quest,
-						SuccessMsg:          "",
-						ErrorMsg:            "Error copying file",
-						SkipMsg:             "",
-						CurrentQuest:        quest.QuestNumber,
-						TotalQuests:         totalQuests,
-						QuestTimerRemaining: time.Until(quest.QuestTimerEndTime).String(),
-						QuestTimerEndTime:   quest.QuestTimerEndTime.Format(time.RFC3339),
-						HintTimerRemaining:  time.Until(quest.HintTimerEndTime).String(),
-						HintTimerEndTime:    quest.HintTimerEndTime.Format(time.RFC3339),
+						Username:     teams[teamName].Username,
+						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
+						Quest:        quest,
+						SuccessMsg:   "",
+						ErrorMsg:     "Error copying file",
+						SkipMsg:      "",
+						CurrentQuest: quest.QuestNumber,
+						TotalQuests:  totalQuests,
+						QuestTimerRemaining: func() string {
+							if quest.QuestTimerRunning {
+								return time.Until(quest.QuestTimerEndTime).String()
+							}
+							return ""
+						}(),
+						QuestTimerEndTime: func() string {
+							if quest.QuestTimerRunning {
+								return quest.QuestTimerEndTime.Format(time.RFC3339)
+							}
+							return ""
+						}(),
+						HintTimerRemaining: func() string {
+							if quest.HintTimerRunning {
+								return time.Until(quest.HintTimerEndTime).String()
+							}
+							return ""
+						}(),
+						HintTimerEndTime: func() string {
+							if quest.HintTimerRunning {
+								return quest.HintTimerEndTime.Format(time.RFC3339)
+							}
+							return ""
+						}(),
 					}
 					templates.ExecuteTemplate(w, "treasurehunt.html", data)
 					return
@@ -702,13 +779,13 @@ func seedDatabase() {
 			QuestTimerRequired: false,
 		},
 		{
-			TeamName:       "TEAM1",
-			QuestNumber:    3,
-			Text:           "Легендата разказва, че църквата е построена през XII век. За да благодарят на Бога за подкрепата в успешната битка през 1190 г. в Тревненския проход, братята Асеневци построили три църкви, посветени на Св. Архангел Михаил. Едната от тях била в Трявна. Тя била опожарена при голямото кърджалийско нападение над Трявна през 1798 г. После тревненци се съвзели, ремонтирали църквата си и подновили служението. \nВлезте в църквата и запалете свещичката, с която разполагате (има по свещ за всеки).\n Timer-ът вече отброява 10 минутки от началото на quest-а, за да имате време за себе си в църквата. Ще можете да продължите нататък с quest-а след като минат 10-те минути. Когато времето изтече се съберете в двора на Църквата, направете снимка на цвете от двора на църквата и я изпратете.",
-			CorrectAnswers: "",
-			FileRequired:   true,
-			// QuestTimerRequired: true,
-			// QuestTimerDuration: 10 * time.Minute,
+			TeamName:           "TEAM1",
+			QuestNumber:        3,
+			Text:               "Легендата разказва, че църквата е построена през XII век. За да благодарят на Бога за подкрепата в успешната битка през 1190 г. в Тревненския проход, братята Асеневци построили три църкви, посветени на Св. Архангел Михаил. Едната от тях била в Трявна. Тя била опожарена при голямото кърджалийско нападение над Трявна през 1798 г. После тревненци се съвзели, ремонтирали църквата си и подновили служението. \nВлезте в църквата и запалете свещичката, с която разполагате (има по свещ за всеки).\n Timer-ът вече отброява 10 минутки от началото на quest-а, за да имате време за себе си в църквата. Ще можете да продължите нататък с quest-а след като минат 10-те минути. Когато времето изтече се съберете в двора на Църквата, направете снимка на цвете от двора на църквата и я изпратете.",
+			CorrectAnswers:     "",
+			FileRequired:       true,
+			QuestTimerRequired: true,
+			QuestTimerDuration: 10 * time.Second,
 		},
 		{
 			TeamName:           "TEAM1",

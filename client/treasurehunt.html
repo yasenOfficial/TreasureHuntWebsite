@@ -45,7 +45,7 @@
                 {{if .Quest.Hint}} <!-- FIX WHEN FILE ERROR -->
                 <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">
                     Show Hint 
-                    {{if .HintTimerRemaining}}
+                    {{if ne .HintTimerRemaining ""}}
                         <p><span id="hint-timer"> {{.HintTimerRemaining}}</span></p>
                         <span id="hint-timer-end-time" data-end-time="{{.HintTimerEndTime}}"></span>
                     {{end}}
@@ -73,7 +73,7 @@
                     </div>
                     {{end}}
 
-                    {{if .QuestTimerRemaining}}
+                    {{if ne .QuestTimerRemaining ""}}
                     <p>Quest Timer:<span id="quest-timer"> {{.QuestTimerRemaining}}</span></p>
                     
                     <span id="quest-timer-end-time" data-end-time="{{.QuestTimerEndTime}}"></span>
