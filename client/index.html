@@ -18,34 +18,75 @@
     <script src="/static/js/clearLocalStorage.js"></script>
 </head>
 
-<body class="bg-light text-dark">
+<body>
+
     <div class="container mt-5">
-        <div class="row justify-content-center">
+
+        <div class="mt-5 row justify-content-center">
             <div class="col-md-8 col-lg-6">
-                <div class="card border-dark shadow-sm medieval-card">
-                    <div class="card-header bg-dark text-light text-center">
-                        <h2 class="mb-0">Treasure Hunt Login</h2>
+                <div class="card shadow-sm medieval-card">
+                    <div class="card-header text-center">
+                        <h2 class="mb-0">Трявна Treasure Hunt</h2>
                     </div>
                     <div class="card-body">
-                        <h4 class="text-center mb-4">Welcome to the Medieval Treasure Hunt!</h4>
                         <form id="loginForm" method="POST" action="/login">
                             <div class="form-group">
-                                <label for="username">Username:</label>
+                                <label for="username">Име:</label>
                                 <input type="text" id="username" name="username" class="form-control" required>
                             </div>
                             <div class="form-group">
-                                <label for="password">Password:</label>
+                                <label for="password">Парола:</label>
                                 <input type="password" id="password" name="password" class="form-control" required>
                             </div>
-                            <button type="submit" class="btn btn-dark btn-block">Login</button>
+                            <button type="submit" class="btn btn-dark btn-block">Вход</button>
                         </form>
                     </div>
-                    <div class="card-footer bg-dark text-light text-center">
-                        <small>© 2024 Treasure Hunt Inc.</small>
+                    <div class="card-footer text-center">
+                        <small>© 2024 yasenOfficial</small>
                     </div>
                 </div>
             </div>
         </div>
+        <div class="rules mt-5 mb-5 p-4 border shadow-sm">
+            <h3 class="mb-4">Инструкции</h3>
+            <h4>Цел на играта</h4>
+            <p>Целта на днешната ви разходка е да научите нещо ново за прекрасната Трявна и нейната история, да се
+                насладите
+                на красотата, създадена от нашите предци, и да бъдете заедно.</p>
+
+            <h4 >Задачи</h4>
+            <p>В treasure hunt-а има 47 задачи. Не е необходимо да направите всички, но можете да се опитате! Направете
+                толкова задачи, колкото успеете.</p>
+            <p>Ако не успеете да отговорите на задачата, можете да преминете нататък след като въведете код:
+                <code>CODE=SKIP</code>.
+            </p>
+            <p>Mолим ви да не използвате Google, AI Chat bots, итн., защото когато натиснете на нов tab, ще бъдете дисквалифицирани.
+            </p>
+
+            <h4>Точкуване</h4>
+            <p>Имате по 5 точки за всеки Quest.</p>
+            <p>Можете да използвате подсказка, ако желаете, но всеки използван hint ще намали точките ви с по 1 точка.
+            </p>
+            <p>При пропускане на Quest. Няма да получите точки за него.
+            </p>
+            <p>Има задачи, при които преди да използвате подсказка започва да тече време, за да имате време да
+                помислите, а
+                не директно да посегнете към подсказката. Ако обаче посочите верен отговор без да използвате подсказка,
+                този
+                таймер не спира да продължите нататък.</p>
+
+            <h4>Оценяване</h4>
+            <p>Отборите ще бъдат оценявани за:</p>
+            <ul class="list-unstyled">
+                <li><i class="fas fa-check-circle text-success"></i> Най-много вярно изпълнени задачите</li>
+                <li><i class="fas fa-clock text-info"></i> Най-бързо преминати задачи</li>
+                <li><i class="fas fa-lightbulb text-warning"></i> Оригиналност на изпълнение</li>
+                <li><i class="fas fa-users text-primary"></i> Team spirit</li>
+            </ul>
+            <p>Насладете се на преживяването заедно!</p>
+        </div>
+    </div>
+
     </div>
 
     <!-- Bootstrap JS and dependencies -->

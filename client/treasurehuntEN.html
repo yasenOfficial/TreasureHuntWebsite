@@ -12,18 +12,18 @@
 
 <body>
     <div class="container mt-5">
-        <h1>Добре дошли, {{.Username}}!</h1>
+        <h1>Welcome to the Treasure Hunt, {{.Username}}!</h1>
 
         <div class="stopwatch my-4">
             <!-- <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p> -->
-            <p>Оставащо време: <span id="countdown-time">--:--:--</span></p>
+            <p>Time Remaining: <span id="countdown-time">--:--:--</span></p>
 
         </div>
 
         <div class="quest-container my-4">
             <div id ="quest-id" data-quest-id="{{.Quest.ID}}"></div>
-            <h2>Текущ Quest:</h2>
-            <p>Прогрес: {{.CurrentQuest}}/{{.TotalQuests}}</p>
+            <h2>Current Quest:</h2>
+            <p>Current Quest: {{.CurrentQuest}}/{{.TotalQuests}}</p>
 
 
             <div class="quest">
@@ -37,14 +37,14 @@
                 {{if .Quest.AudioPath}}
                 <audio controls>
                     <source src="{{.Quest.AudioPath}}" type="audio/mpeg">
-                    Вашето устройство не поддържа аудио елементи.
+                    Your browser does not support the audio element.
                 </audio>
                 {{end}}
 
                 <!-- Hint button -->
                 {{if .Quest.Hint}} <!-- FIX WHEN FILE ERROR -->
                 <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">
-                    Покажи Hint 
+                    Show Hint 
                     {{if ne .HintTimerRemaining ""}}
                         <p><span id="hint-timer"> {{.HintTimerRemaining}}</span></p>
                         <span id="hint-timer-end-time" data-end-time="{{.HintTimerEndTime}}"></span>
@@ -61,7 +61,7 @@
                     <!-- File upload form (only shown if FileRequired is true) -->
                     {{if .Quest.FileRequired}}
                     <div class="form-group">
-                        <label for="uploaded_image">Добави Снимка:</label>
+                        <label for="uploaded_image">Upload Image:</label>
                         <input type="file" id="uploaded_image" name="uploaded_image" class="form-control-file">
                     </div>
                     {{end}}
@@ -74,12 +74,12 @@
                     {{end}}
 
                     {{if ne .QuestTimerRemaining ""}}
-                    <p>Quest Таймер:<span id="quest-timer"> {{.QuestTimerRemaining}}</span></p>
+                    <p>Quest Timer:<span id="quest-timer"> {{.QuestTimerRemaining}}</span></p>
                     
                     <span id="quest-timer-end-time" data-end-time="{{.QuestTimerEndTime}}"></span>
 
                     {{end}}
-                    <button id="submit-btn" type="submit" class="btn btn-primary">Изпращане на отговор</button>
+                    <button id="submit-btn" type="submit" class="btn btn-primary">Submit Answer</button>
                 </form>
 
 
@@ -90,7 +90,7 @@
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-warning text-white">
-                                <h5 class="modal-title" id="errorModalLabel">О, не!</h5>
+                                <h5 class="modal-title" id="errorModalLabel">Uh Oh!</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
@@ -99,7 +99,7 @@
                                 <p>{{.ErrorMsg}}</p>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Затвори</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                             </div>
                         </div>
                     </div>
@@ -117,7 +117,7 @@
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-success text-white">
-                                <h5 class="modal-title" id="successModalLabel">Успех!</h5>
+                                <h5 class="modal-title" id="successModalLabel">Success!</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
@@ -126,7 +126,7 @@
                                 <p>{{.SuccessMsg}}</p>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Затвори</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                             </div>
                         </div>
                     </div>
@@ -144,7 +144,7 @@
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-danger text-dark">
-                                <h5 class="modal-title" id="skipModalLabel">Прескочен Quest</h5>
+                                <h5 class="modal-title" id="skipModalLabel">Quest Skipped</h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
@@ -153,7 +153,7 @@
                                 <p>{{.SkipMsg}}</p>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Затвори</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                             </div>
                         </div>
                     </div>

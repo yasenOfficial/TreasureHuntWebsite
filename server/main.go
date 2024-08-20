@@ -109,7 +109,8 @@ func main() {
 		data := struct {
 			Message string
 		}{
-			Message: "Please enter your credentials",
+			// Message: "Please enter your credentials",
+			Message: "Моля, въведете вашите данни за вход",
 		}
 
 		err := templates.ExecuteTemplate(w, "index.html", data)
@@ -150,16 +151,20 @@ func main() {
 				}
 			}
 
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			// http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			http.Error(w, "Невалидни данни за вход", http.StatusUnauthorized)
 		} else {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			// http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			http.Error(w, "Невалидни данни за вход", http.StatusUnauthorized)
 		}
 	})
 
 	http.HandleFunc("/treasurehunt", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("logged_in_team")
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			// http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+
 			return
 		}
 
@@ -169,7 +174,9 @@ func main() {
 		skipped := r.URL.Query().Get("skipped")
 
 		if teamName != requestedTeam {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			// http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+
 			return
 		}
 
@@ -178,7 +185,9 @@ func main() {
 		mu.Unlock()
 
 		if !ok {
-			http.Error(w, "Invalid team", http.StatusBadRequest)
+			// http.Error(w, "Invalid team", http.StatusBadRequest)
+			http.Error(w, "Невалиден отбор", http.StatusBadRequest)
+
 			return
 		}
 
@@ -293,7 +302,6 @@ func main() {
 				}
 
 				return
-
 			}
 		}
 
@@ -301,11 +309,14 @@ func main() {
 		var errorMsg string
 		var skipMsg string
 		if success == "true" {
-			successMsg = "Congratulations! You have successfully completed the quest."
+			// successMsg = "Congratulations! You have successfully completed the quest."
+			successMsg = "Поздравления! Успешно завършихте задачата."
 		} else if success == "false" {
-			errorMsg = "Wrong answer, try again!"
+			// errorMsg = "Wrong answer, try again!"
+			errorMsg = "Грешен отговор, опитайте отново!"
 		} else if skipped == "true" {
-			skipMsg = "You have skipped this quest."
+			// skipMsg = "You have skipped this quest."
+			skipMsg = "Прескочихте тази задача."
 		}
 
 		data := struct {
@@ -349,7 +360,9 @@ func main() {
 		if r.Method == http.MethodPost {
 			cookie, err := r.Cookie("logged_in_team")
 			if err != nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				// http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				http.Error(w, "Неавторизиран достъп", http.StatusUnauthorized)
+
 				return
 			}
 			teamName := cookie.Value
@@ -357,7 +370,9 @@ func main() {
 			// Parse form data
 			err = r.ParseMultipartForm(10 << 20) // 10 MB limit for uploaded files
 			if err != nil {
-				http.Error(w, "Error parsing form data", http.StatusBadRequest)
+				// http.Error(w, "Error parsing form data", http.StatusBadRequest)
+				http.Error(w, "Грешка при обработката на формуляра", http.StatusBadRequest)
+
 				return
 			}
 
@@ -368,7 +383,8 @@ func main() {
 			var quest Quest
 			if err := db.Where("id = ? AND team_name = ?", questID, teamName).First(&quest).Error; err != nil {
 				log.Printf("Quest not found: %v", err)
-				http.Error(w, "Quest not found", http.StatusNotFound)
+				// http.Error(w, "Quest not found", http.StatusNotFound)
+				http.Error(w, "Задачата не е намерена", http.StatusNotFound)
 				return
 			}
 
@@ -391,12 +407,13 @@ func main() {
 					HintTimerRemaining  string
 					HintTimerEndTime    string
 				}{
-					Username:     teams[teamName].Username,
-					StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
-					ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
-					Quest:        quest,
-					SuccessMsg:   "",
-					ErrorMsg:     "Wait for the quest timer to end!",
+					Username:    teams[teamName].Username,
+					StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
+					ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
+					Quest:       quest,
+					SuccessMsg:  "",
+					// ErrorMsg:     "Wait for the quest timer to end!",
+					ErrorMsg:     "Изчакайте таймера на задачата да изтече!",
 					SkipMsg:      "",
 					CurrentQuest: quest.QuestNumber,
 					TotalQuests:  totalQuests,
@@ -471,12 +488,13 @@ func main() {
 						HintTimerRemaining  string
 						HintTimerEndTime    string
 					}{
-						Username:     teams[teamName].Username,
-						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
-						Quest:        quest,
-						SuccessMsg:   "",
-						ErrorMsg:     "No file uploaded",
+						Username:    teams[teamName].Username,
+						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
+						Quest:       quest,
+						SuccessMsg:  "",
+						// ErrorMsg:     "No file uploaded",
+						ErrorMsg:     "Не е качен файл",
 						SkipMsg:      "",
 						CurrentQuest: quest.QuestNumber,
 						TotalQuests:  totalQuests,
@@ -534,12 +552,13 @@ func main() {
 						HintTimerRemaining  string
 						HintTimerEndTime    string
 					}{
-						Username:     teams[teamName].Username,
-						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
-						Quest:        quest,
-						SuccessMsg:   "",
-						ErrorMsg:     "Error saving file, try again",
+						Username:    teams[teamName].Username,
+						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
+						Quest:       quest,
+						SuccessMsg:  "",
+						// ErrorMsg:     "Error saving file, try again",
+						ErrorMsg:     "Грешка при запазването на файла, опитайте отново",
 						SkipMsg:      "",
 						CurrentQuest: quest.QuestNumber,
 						TotalQuests:  totalQuests,
@@ -595,12 +614,13 @@ func main() {
 						HintTimerRemaining  string
 						HintTimerEndTime    string
 					}{
-						Username:     teams[teamName].Username,
-						StartTime:    teams[teamName].Stopwatch.Format(time.RFC3339),
-						ElapsedTime:  time.Since(teams[teamName].Stopwatch).String(),
-						Quest:        quest,
-						SuccessMsg:   "",
-						ErrorMsg:     "Error copying file",
+						Username:    teams[teamName].Username,
+						StartTime:   teams[teamName].Stopwatch.Format(time.RFC3339),
+						ElapsedTime: time.Since(teams[teamName].Stopwatch).String(),
+						Quest:       quest,
+						SuccessMsg:  "",
+						// ErrorMsg:     "Error copying file",
+						ErrorMsg:     "Грешка при копирането на файла",
 						SkipMsg:      "",
 						CurrentQuest: quest.QuestNumber,
 						TotalQuests:  totalQuests,
@@ -649,7 +669,8 @@ func main() {
 				http.Redirect(w, r, fmt.Sprintf("/treasurehunt?team=%s&success=false", teamName), http.StatusSeeOther)
 			}
 		} else {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			// http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			http.Error(w, "Невалиден метод на заявка", http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -661,7 +682,8 @@ func main() {
 		// Check for session cookie
 		cookie, err := r.Cookie("logged_in_team")
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			// http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
 			return
 		}
 		teamName := cookie.Value
@@ -670,7 +692,8 @@ func main() {
 		var quest Quest
 		if err := db.Where("id = ? AND team_name = ?", questID, teamName).First(&quest).Error; err != nil {
 			log.Printf("Quest not found: %v", err)
-			http.Error(w, "Quest not found", http.StatusNotFound)
+			// http.Error(w, "Quest not found", http.StatusNotFound)
+			http.Error(w, "Задачата не е намерена", http.StatusNotFound)
 			return
 		}
 
@@ -691,7 +714,8 @@ func main() {
 		// Extract team name from query parameter
 		teamName := r.URL.Query().Get("team")
 		if teamName == "" {
-			http.Error(w, "Team not specified", http.StatusBadRequest)
+			// http.Error(w, "Team not specified", http.StatusBadRequest)
+			http.Error(w, "Отборът не е посочен", http.StatusBadRequest)
 			return
 		}
 
@@ -768,7 +792,7 @@ func seedDatabase() {
 			Hint:               "Църквата е с име на главния архангел, главния пазител на небесното царство и главен страж на Божия закон, който превежда душите на мъртвите до ада или рая. ",
 			QuestTimerRequired: false,
 			HintTimerRequired:  true,
-			HintTimerDuration:  2 * time.Minute,
+			HintTimerDuration:  2 * time.Second,
 		},
 		{
 			TeamName:           "TEAM1",
