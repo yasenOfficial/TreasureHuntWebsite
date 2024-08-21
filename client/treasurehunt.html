@@ -21,9 +21,9 @@
         </div>
 
         <div class="quest-container my-4">
-            <div id ="quest-id" data-quest-id="{{.Quest.ID}}"></div>
+            <div id="quest-id" data-quest-id="{{.Quest.ID}}"></div>
             <h2>Текущ Quest:</h2>
-            <p>Прогрес: {{.CurrentQuest}}/{{.TotalQuests}}</p>
+            <p>Прогрес: <span id="current-quest">{{.CurrentQuest}}</span>/{{.TotalQuests}}</p>
 
 
             <div class="quest">
@@ -44,14 +44,14 @@
                 <!-- Hint button -->
                 {{if .Quest.Hint}} <!-- FIX WHEN FILE ERROR -->
                 <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">
-                    Покажи Hint 
+                    Покажи Hint
                     {{if ne .HintTimerRemaining ""}}
-                        <p><span id="hint-timer"> {{.HintTimerRemaining}}</span></p>
-                        <span id="hint-timer-end-time" data-end-time="{{.HintTimerEndTime}}"></span>
+                    <p><span id="hint-timer"> {{.HintTimerRemaining}}</span></p>
+                    <span id="hint-timer-end-time" data-end-time="{{.HintTimerEndTime}}"></span>
                     {{end}}
                 </button>
                 <p id="hintText" class="text-warning" style="display:none;">Hint: {{.Quest.Hint}}</p>
-                    
+
                 {{end}}
 
                 <form id="quest-form" action="/submit" method="post" enctype="multipart/form-data">
@@ -68,14 +68,14 @@
 
                     {{if ne .Quest.CorrectAnswers "" }}
                     <div class="form-group">
-                        <label for="answer">Your Answer:</label>
+                        <label for="answer">Вашият отговор:</label>
                         <input type="text" id="answer" name="answer" class="form-control" required>
                     </div>
                     {{end}}
 
                     {{if ne .QuestTimerRemaining ""}}
                     <p>Quest Таймер:<span id="quest-timer"> {{.QuestTimerRemaining}}</span></p>
-                    
+
                     <span id="quest-timer-end-time" data-end-time="{{.QuestTimerEndTime}}"></span>
 
                     {{end}}
@@ -177,6 +177,37 @@
     <!-- <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script> -->
     <script src="/static/js/gamefinishedHandler.js"></script>
     <script src="/static/js/questTimerHandler.js"></script>
+    <script src ="/static/js/disableGoingBack.js"></script>
+
+    <script>
+        // Function to fetch the current quest status
+        async function checkQuestStatus() {
+            try {
+                const response = await fetch('/check-quest-status');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const status = await response.json();
+
+                // Extract the current quest number from the server response
+                const currentQuestNumber = status.questNumber;
+
+                // Get the current quest number from the webpage (assumes there's an element with id 'quest-number')
+                const displayedQuestNumber = parseInt(document.getElementById('current-quest').textContent, 10);
+
+                // If the quest number has changed, refresh the page
+                if (currentQuestNumber !== displayedQuestNumber) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error checking quest status:', error);
+            }
+        }
+
+        // Check the quest status every 5 seconds
+        setInterval(checkQuestStatus, 5000);
+    </script>
+
 
 </body>
 
