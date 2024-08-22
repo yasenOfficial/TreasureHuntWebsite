@@ -2,71 +2,117 @@
 
 body {
     font-family: 'Garamond', serif;
-    background-color: #f4f1e8; /* Beige background for the body */
-    color: #3b2a0b; /* Dark brown text */
+    background-color: #f4f1e8;
+    /* Beige background for the body */
+    color: #3b2a0b;
+    /* Dark brown text */
 }
 
 .rules {
-    background-color: #fff; /* Beige background for container and card elements */
-    border: 1px solid #d1b7a0; /* Light brown border */
-    border-radius: 16px; /* Rounded corners */
+    background-color: #fff;
+    /* Beige background for container and card elements */
+    border: 1px solid #d1b7a0;
+    /* Light brown border */
+    border-radius: 16px;
+    /* Rounded corners */
 }
 
-.card-header, .card-footer {
-    background-color: #d1b7a0; /* Beige background for card headers and footers */
-    color: #3b2a0b; /* Dark brown text */
+.card-header,
+.card-footer {
+    background-color: #d1b7a0;
+    /* Beige background for card headers and footers */
+    color: #3b2a0b;
+    /* Dark brown text */
 }
 
-.card-header h2, .card-footer small {
-    color: #3b2a0b; /* Dark brown text for header and footer */
+.card-header h2,
+.card-footer small {
+    color: #3b2a0b;
+    /* Dark brown text for header and footer */
 }
 
-h1, h2, h3, h4 {
-    color: #3b2a0b; /* Dark brown for headings */
-    background-color: #d1b7a0; /* Beige background for headings */
-    padding: 5px;
-    border-radius: 4px;
+h1,
+h2,
+h3,
+h4 {
+    color: #3b2a0b;
+    /* Dark brown for headings */
+    background-color: #d1b7a0;
+    /* Beige background for headings */
+    padding: 10px;
+    border-radius: 8px;
 }
 
-.btn-dark, .btn-info, .btn-primary {
-    background-color: #7f5f3e; /* Fire-like brown for buttons */
-    border: none;
+.btn-dark,
+.btn-primary {
+    background-color: #7f5f3e !important;
+    /* Fire-like brown for buttons */
+    border: none !important;
+    /* No border */
 }
 
-.btn-dark:hover, .btn-info:hover, .btn-primary:hover {
-    background-color: #6a4c3d; /* Slightly darker brown on hover */
+.btn-dark:hover,
+.btn-primary:hover {
+    background-color: #6a4c3d !important;
+    /* Slightly darker brown on hover */
+}
+
+.btn-info {
+    background-color: #ffa600 !important;
+    border: none !important;
+}
+
+.btn-info:hover {
+    background-color: #ffc55a !important;
+}
+
+.btn-info:disabled {
+    background-color: #ffc55a !important;
 }
 
 ul.list-unstyled li {
-    border-bottom: 1px solid #d1b7a0; /* Light brown border between list items */
+    border-bottom: 1px solid #d1b7a0;
+    /* Light brown border between list items */
     padding: 8px 0;
 }
 
 img.quest-image {
-    border: 2px solid #d1b7a0; /* Light brown border around images */
-    border-radius: 8px; /* Rounded corners for images */
+    border: 2px solid #d1b7a0;
+    /* Light brown border around images */
+    border-radius: 8px;
+    /* Rounded corners for images */
 }
 
-.modal-header, .modal-footer {
-    background-color: #d1b7a0; /* Beige for modal headers and footers */
-    color: #3b2a0b; /* Dark brown text */
+.modal-header,
+.modal-footer {
+    background-color: #d1b7a0;
+    /* Beige for modal headers and footers */
+    color: #3b2a0b;
+    /* Dark brown text */
 }
 
 .modal-content {
-    border: 1px solid #d1b7a0; /* Light brown border around modals */
+    border: 1px solid #d1b7a0;
+    /* Light brown border around modals */
 }
 
 .modal-body {
-    background-color: #f4f1e8; /* Beige background for modal body */
+    background-color: #f4f1e8;
+    /* Beige background for modal body */
 }
 
-.stopwatch, .quest {
-    border: 1px solid #d1b7a0; /* Light brown border around stopwatch and quest sections */
+.stopwatch,
+.quest {
+    border: 1px solid #d1b7a0;
+    /* Light brown border around stopwatch and quest sections */
     padding: 10px;
-    background-color: #f4f1e8; /* Beige background */
+    background-color: #f4f1e8;
+    /* Beige background */
 }
 
-button, .btn {
+button,
+.btn {
     font-family: 'Garamond', serif;
-    border-radius: 5px; /* Rounded corners for buttons */
+    border-radius: 5px;
+    /* Rounded corners for buttons */
 }

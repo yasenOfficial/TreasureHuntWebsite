@@ -14,9 +14,8 @@
     <div class="container mt-5">
         <h1>Добре дошли, {{.Username}}!</h1>
 
-        <div class="stopwatch my-4">
-            <!-- <p>Elapsed time: <span id="elapsed-time">{{.ElapsedTime}}</span></p> -->
-            <p>Оставащо време: <span id="countdown-time">--:--:--</span></p>
+        <div class="my-4">
+            <p class="stopwatch">Оставащо време: <span id="countdown-time">--:--:--</span></p>
 
         </div>
 
@@ -50,7 +49,7 @@
                     <span id="hint-timer-end-time" data-end-time="{{.HintTimerEndTime}}"></span>
                     {{end}}
                 </button>
-                <p id="hintText" class="text-warning" style="display:none;">Hint: {{.Quest.Hint}}</p>
+                <p id="hintText" class="text-danger" style="display:none;">Hint: {{.Quest.Hint}}</p>
 
                 {{end}}
 

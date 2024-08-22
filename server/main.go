@@ -883,25 +883,20 @@ func parseBool(value string) bool {
 
 // Helper function to parse duration
 func parseDuration(value string) time.Duration {
-	// Try to parse it as a standard duration string first.
-	_, err := time.ParseDuration(value)
+	// Attempt to parse the string as a standard duration (e.g., "1h30m", "45s")
+	duration, err := time.ParseDuration(value)
 	if err == nil {
-		return 0
+		return duration
 	}
 
-	// If parsing as a duration string fails, check if it's just a number of seconds.
-	if strings.Contains(value, "s") {
-		// Remove any non-numeric characters (e.g., 's' or 'm').
-		value = strings.TrimSuffix(value, "s")
+	// If parsing as a standard duration string fails, check if it's a simple number
+	// with a time unit that may have been omitted.
+	if seconds, err := strconv.ParseFloat(value, 64); err == nil {
+		return time.Duration(seconds * float64(time.Second))
 	}
 
-	// Try to parse the value as a number of seconds.
-	seconds, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return 0
-	}
-
-	return time.Duration(seconds * float64(time.Second))
+	// If all parsing attempts fail, return a zero duration
+	return 0
 }
 
 // logAction logs team actions to a file
