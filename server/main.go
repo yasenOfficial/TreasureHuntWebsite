@@ -846,6 +846,11 @@ func seedDatabaseFromCSV(db *gorm.DB, filePath string) {
 
 	// Process the CSV records
 	for _, record := range records {
+		// Replace literal \n with actual newlines in text fields
+		for i, field := range record {
+			record[i] = strings.ReplaceAll(field, `\n`, "\n")
+		}
+
 		// Convert and map CSV fields to Quest struct
 		quest := Quest{
 			TeamName:           record[0],
