@@ -102,10 +102,22 @@ func main() {
 	teams["TEAM4"] = &Team{Username: os.Getenv("TEAM4USER"), Password: os.Getenv("TEAM4PASS")}
 
 	// Serve static files
-	http.Handle("/static/css/", http.StripPrefix("/static/css/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/css", templateDir)))))
-	http.Handle("/static/js/", http.StripPrefix("/static/js/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/js", templateDir)))))
-	http.Handle("/static/img/", http.StripPrefix("/static/img/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/img", templateDir)))))
-	http.Handle("/static/audio/", http.StripPrefix("/static/audio/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/audio", templateDir)))))
+	http.Handle(
+		"/static/css/",
+		http.StripPrefix("/static/css/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/css", templateDir)))),
+	)
+	http.Handle(
+		"/static/js/",
+		http.StripPrefix("/static/js/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/js", templateDir)))),
+	)
+	http.Handle(
+		"/static/img/",
+		http.StripPrefix("/static/img/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/img", templateDir)))),
+	)
+	http.Handle(
+		"/static/audio/",
+		http.StripPrefix("/static/audio/", http.FileServer(http.Dir(fmt.Sprintf("%s/static/audio", templateDir)))),
+	)
 
 	// Serve the login page
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -155,10 +167,13 @@ func main() {
 			}
 
 			// http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-			http.Error(w, "Невалидни данни за вход", http.StatusUnauthorized)
+			// http.Error(w, "Невалидни данни за вход", http.StatusUnauthorized)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 		} else {
 			// http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-			http.Error(w, "Невалидни данни за вход", http.StatusUnauthorized)
+			// http.Error(w, "Невалидни данни за вход", http.StatusUnauthorized)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+
 		}
 	})
 
@@ -166,7 +181,8 @@ func main() {
 		cookie, err := r.Cookie("logged_in_team")
 		if err != nil {
 			// http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			// http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 
 			return
 		}
@@ -178,7 +194,8 @@ func main() {
 
 		if teamName != requestedTeam {
 			// http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			// http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 
 			return
 		}
@@ -189,20 +206,39 @@ func main() {
 
 		if !ok {
 			// http.Error(w, "Invalid team", http.StatusBadRequest)
-			http.Error(w, "Невалиден отбор", http.StatusBadRequest)
+			// http.Error(w, "Невалиден отбор", http.StatusBadRequest)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 
 			return
 		}
 
 		if team.GameFinished {
+			// Count the number of skipped quests
+			var skipCount int64
+			db.Model(&Quest{}).Where("team_name = ? AND skipped = ?", teamName, true).Count(&skipCount)
 
-			var questCount int64
-			db.Model(&Quest{}).Where("team_name = ? AND skipped = ?", teamName, true).Count(&questCount)
-
+			// Count the number of hints used
 			var hintCount int64
 			db.Model(&Quest{}).Where("team_name = ?", teamName).Select("sum(hints_used)").Row().Scan(&hintCount)
 
-			http.Redirect(w, r, fmt.Sprintf("/gamefinished?team=%s&hintCount=%d&skipCount=%d", teamName, hintCount, questCount), http.StatusSeeOther)
+			// Count the number of completed quests
+			var completedCount int64
+			db.Model(&Quest{}).Where("team_name = ? AND completed = ?", teamName, true).Count(&completedCount)
+			completedCount = completedCount - skipCount
+
+			// Redirect to the game finished page with hint count, skip count, and completed quests
+			http.Redirect(
+				w,
+				r,
+				fmt.Sprintf(
+					"/gamefinished?team=%s&hintCount=%d&skipCount=%d&questsCompleted=%d",
+					teamName,
+					hintCount,
+					skipCount,
+					completedCount,
+				),
+				http.StatusSeeOther,
+			)
 			return
 		}
 
@@ -215,14 +251,34 @@ func main() {
 		// Get the current quest
 		var quest Quest
 		if err := db.Where("team_name = ? AND completed = ?", teamName, false).Order("quest_number asc").First(&quest).Error; err != nil {
-			// Redirect to the game finished page if no active quests
-			var questCount int64
-			db.Model(&Quest{}).Where("team_name = ? AND skipped = ?", teamName, true).Count(&questCount)
+			// If no active quests, assume the game is finished and redirect to gamefinished
 
+			// Count the number of skipped quests
+			var skipCount int64
+			db.Model(&Quest{}).Where("team_name = ? AND skipped = ?", teamName, true).Count(&skipCount)
+
+			// Count the number of hints used
 			var hintCount int64
 			db.Model(&Quest{}).Where("team_name = ?", teamName).Select("sum(hints_used)").Row().Scan(&hintCount)
 
-			http.Redirect(w, r, fmt.Sprintf("/gamefinished?team=%s&hintCount=%d&skipCount=%d", teamName, hintCount, questCount), http.StatusSeeOther)
+			// Count the number of completed quests
+			var completedCount int64
+			db.Model(&Quest{}).Where("team_name = ? AND completed = ?", teamName, true).Count(&completedCount)
+			completedCount = completedCount - skipCount
+
+			// Redirect to the game finished page with hint count, skip count, and completed quests
+			http.Redirect(
+				w,
+				r,
+				fmt.Sprintf(
+					"/gamefinished?team=%s&hintCount=%d&skipCount=%d&questsCompleted=%d",
+					teamName,
+					hintCount,
+					skipCount,
+					completedCount,
+				),
+				http.StatusSeeOther,
+			)
 			return
 		}
 		if quest.HintTimerRequired && !quest.HintTimerRunning && !quest.HintTimerFinished {
@@ -364,7 +420,8 @@ func main() {
 			cookie, err := r.Cookie("logged_in_team")
 			if err != nil {
 				// http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				http.Error(w, "Неавторизиран достъп", http.StatusUnauthorized)
+				// http.Error(w, "Неавторизиран достъп", http.StatusUnauthorized)
+				http.Redirect(w, r, "/", http.StatusSeeOther)
 
 				return
 			}
@@ -387,7 +444,9 @@ func main() {
 			if err := db.Where("id = ? AND team_name = ?", questID, teamName).First(&quest).Error; err != nil {
 				log.Printf("Quest not found: %v", err)
 				// http.Error(w, "Quest not found", http.StatusNotFound)
-				http.Error(w, "Задачата не е намерена", http.StatusNotFound)
+				// http.Error(w, "Задачата не е намерена", http.StatusNotFound)
+				http.Redirect(w, r, "/", http.StatusSeeOther)
+
 				return
 			}
 
@@ -673,7 +732,9 @@ func main() {
 			}
 		} else {
 			// http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-			http.Error(w, "Невалиден метод на заявка", http.StatusMethodNotAllowed)
+			// http.Error(w, "Невалиден метод на заявка", http.StatusMethodNotAllowed)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+
 		}
 	})
 
@@ -686,7 +747,9 @@ func main() {
 		cookie, err := r.Cookie("logged_in_team")
 		if err != nil {
 			// http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			// http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+
 			return
 		}
 		teamName := cookie.Value
@@ -717,31 +780,64 @@ func main() {
 		// Extract team name from query parameter
 		teamName := r.URL.Query().Get("team")
 		if teamName == "" {
-			// http.Error(w, "Team not specified", http.StatusBadRequest)
-			http.Error(w, "Отборът не е посочен", http.StatusBadRequest)
+			// Redirect to home if no team is specified
+			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
-		// Retrieve quest stats from query parameters
+		// Retrieve hint count from query parameters
 		hintCount, err := strconv.ParseInt(r.URL.Query().Get("hintCount"), 10, 64)
 		if err != nil {
 			hintCount = 0
 		}
 
+		// Retrieve skip count from query parameters
 		skipCount, err := strconv.ParseInt(r.URL.Query().Get("skipCount"), 10, 64)
 		if err != nil {
 			skipCount = 0
 		}
 
-		// Send the final results
-		data := struct {
-			HintCount int64
-			SkipCount int64
-		}{
-			HintCount: hintCount,
-			SkipCount: skipCount,
+		// Retrieve quests completed count (assuming it's provided in the query parameters)
+		questsCompleted, err := strconv.ParseInt(r.URL.Query().Get("questsCompleted"), 10, 64)
+		if err != nil {
+			questsCompleted = 0
 		}
 
+		// Retrieve total quests count (assuming it's provided or can be calculated)
+		var totalQuests int64
+		db.Model(&Quest{}).Where("team_name = ?", teamName).Count(&totalQuests)
+
+		// Prepare the data for rendering the template
+		data := struct {
+			HintCount       int64
+			SkipCount       int64
+			QuestsCompleted int64
+			TotalQuests     int64
+		}{
+			HintCount:       hintCount,
+			SkipCount:       skipCount,
+			QuestsCompleted: questsCompleted,
+			TotalQuests:     totalQuests,
+		}
+
+		// Log final stats to a file
+		logFilePath := "teams_finished.log" // The path to the log file
+		logEntry := fmt.Sprintf("Team: %s | Hints Used: %d | Skips: %d | Quests Completed: %d/%d\n",
+			teamName, hintCount, skipCount, questsCompleted, totalQuests)
+
+		mu.Lock() // Ensure thread-safe file writing
+		file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Printf("Failed to open log file: %v", err)
+		} else {
+			defer file.Close()
+			if _, err := file.WriteString(logEntry); err != nil {
+				log.Printf("Failed to write to log file: %v", err)
+			}
+		}
+		mu.Unlock()
+
+		// Render the template with the final data
 		err = templates.ExecuteTemplate(w, "gamefinished.html", data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -751,7 +847,9 @@ func main() {
 	http.HandleFunc("/check-quest-status", func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("logged_in_team")
 		if err != nil {
-			http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			// http.Error(w, "Неоторизиран достъп", http.StatusUnauthorized)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+
 			return
 		}
 
@@ -761,7 +859,9 @@ func main() {
 		mu.Unlock()
 
 		if !ok {
-			http.Error(w, "Невалиден отбор", http.StatusBadRequest)
+			// http.Error(w, "Невалиден отбор", http.StatusBadRequest)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+
 			return
 		}
 
@@ -800,7 +900,10 @@ func main() {
 
 			mu.Lock()
 			for _, team := range teams {
-				if team.StopwatchOn && time.Since(team.Stopwatch) >= 2*time.Hour { // FIX --------------------- THE TIME THE GAME WILL LAST --------------------------------------------
+				if team.StopwatchOn &&
+					time.Since(
+						team.Stopwatch,
+					) >= 2*time.Hour { // FIX --------------------- THE TIME THE GAME WILL LAST --------------------------------------------
 					team.GameFinished = true
 					fmt.Printf("Team %s has finished the game\n", team.Username)
 					// You can also log this or perform other actions

@@ -9,15 +9,16 @@
 
 </head>
 <body>
-    <div class="container text-center">
+    <div class="container text-center mt-3">
         <h1 class="display-4">Честито!</h1>
         <p class="lead">Край на вашия treasure hunt!</p>
         <hr class="my-4">
         <p>Вашето пътуване приключва тук, но приключението продължава.</p>
         <p class="final-coordinates">Насочете се към механа Зограф на ул. “П. Р. Славейков” №1 за заслужен обяд 🙂</p>
         <p>Благодарим, че играхте!</p>
-        <p>Total hints used: {{.HintCount}}</p>
-        <p>Total quests skipped: {{.SkipCount}}</p>
+        <p>Решени задачи {{.QuestsCompleted}}</p>
+        <p>Hints използвани: {{.HintCount}}</p>
+        <p>Пропуснати задачи: {{.SkipCount}}</p>
         <!-- <a href="/" class="btn btn-primary mt-3">Return to Home</a> -->
     </div>
 
