@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treasure Hunt</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1>Добре дошли, {{.Username}}!</h1>
+
+        <div class="my-4">
+            <p class="stopwatch">Оставащо време: <span id="countdown-time">--:--:--</span></p>
+
+        </div>
+
+        <div class="quest-container my-4">
+            <div id="quest-id" data-quest-id="{{.Quest.ID}}"></div>
+            <h2>Текущ Quest:</h2>
+            <p>Прогрес: <span id="current-quest">{{.CurrentQuest}}</span>/{{.TotalQuests}}</p>
+
+
+            <div class="quest">
+                <p style="white-space: pre-wrap;">{{.Quest.Text}}</p>
+
+                <!-- Display image if available -->
+                {{if .Quest.ImagePath}}
+                <img src="{{.Quest.ImagePath}}" alt="Quest Image" class="quest-image img-fluid">
+                {{end}}
+
+                {{if .Quest.AudioPath}}
+                <audio controls>
+                    <source src="{{.Quest.AudioPath}}" type="audio/mpeg">
+                    Вашето устройство не поддържа аудио елементи.
+                </audio>
+                {{end}}
+
+                <!-- Hint button -->
+                {{if .Quest.Hint}} <!-- FIX WHEN FILE ERROR -->
+                <button id="hintButton" class="btn btn-info my-2" data-quest-id="{{.Quest.ID}}">
+                    Покажи Hint
+                    {{if ne .HintTimerRemaining ""}}
+                    <p><span id="hint-timer"> {{.HintTimerRemaining}}</span></p>
+                    <span id="hint-timer-end-time" data-end-time="{{.HintTimerEndTime}}"></span>
+                    {{end}}
+                </button>
+                <p id="hintText" class="text-danger" style="display:none;">Hint: {{.Quest.Hint}}</p>
+
+                {{end}}
+
+                <form id="quest-form" action="/submit" method="post" enctype="multipart/form-data">
+                    <!-- Enable file upload -->
+                    <input type="hidden" id="quest_id" name="quest_id" value="{{.Quest.ID}}">
+
+                    <!-- File upload form (only shown if FileRequired is true) -->
+                    {{if .Quest.FileRequired}}
+                    <div class="form-group">
+                        <label for="uploaded_image">Добави Снимка:</label>
+                        <input type="file" id="uploaded_image" name="uploaded_image" class="form-control-file">
+                    </div>
+                    {{end}}
+
+                    {{if ne .Quest.CorrectAnswers "" }}
+                    <div class="form-group">
+                        <label for="answer">Вашият отговор:</label>
+                        <input type="text" id="answer" name="answer" class="form-control" required>
+                    </div>
+                    {{end}}
+
+                    {{if ne .QuestTimerRemaining ""}}
+                    <p>Quest Таймер:<span id="quest-timer"> {{.QuestTimerRemaining}}</span></p>
+
+                    <span id="quest-timer-end-time" data-end-time="{{.QuestTimerEndTime}}"></span>
+
+                    {{end}}
+                    <button id="submit-btn" type="submit" class="btn btn-primary">Изпращане на отговор</button>
+                </form>
+
+
+                <!-- Modals for Error, Success, and Skipped messages (if applicable) -->
+                {{if .ErrorMsg}}
+                <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-white">
+                                <h5 class="modal-title" id="errorModalLabel">О, не!</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <p>{{.ErrorMsg}}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Затвори</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        $('#errorModal').modal('show');
+                    });
+                </script>
+                {{end}}
+
+                {{if .SuccessMsg}}
+                <div class="modal fade" id="successModal" tabindex="-1" role="dialog"
+                    aria-labelledby="successModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title" id="successModalLabel">Успех!</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <p>{{.SuccessMsg}}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Затвори</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        $('#successModal').modal('show');
+                    });
+                </script>
+                {{end}}
+
+                {{if .SkipMsg}}
+                <div class="modal fade" id="skipModal" tabindex="-1" role="dialog" aria-labelledby="skipModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-dark">
+                                <h5 class="modal-title" id="skipModalLabel">Прескочен Quest</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <p>{{.SkipMsg}}</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Затвори</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        $('#skipModal').modal('show');
+                    });
+                </script>
+                {{end}}
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/stopwatchHandler.js"></script> -->
+    <script id="start-time" data-start-time="{{.StartTime}}" src="/static/js/timerHandler.js"></script>
+    <script src="/static/js/hintHandler.js"></script>
+    <script src="/static/js/gamefinishedHandler.js"></script>
+    <script src="/static/js/questTimerHandler.js"></script>
+    <script src ="/static/js/disableGoingBack.js"></script>
+    <script src="/static/js/checkQuestStatus.js"></script>
+    <script src="/static/js/soundsHandler.js"></script>
+
+
+</body>
+
+</html>
