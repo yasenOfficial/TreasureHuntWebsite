@@ -1,0 +1,4 @@
+Flask
+pymongo
+flask_jwt_extended
+python-dotenv

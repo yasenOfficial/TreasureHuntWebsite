@@ -1,0 +1,22 @@
+<!-- In /templates/treasurehunt.html -->
+<html>
+<head><title>Treasure Hunt</title></head>
+<body>
+  <h2>Welcome {{ team }}</h2>
+  <p>Elapsed time: {{ elapsed }}</p>
+  <form action="{{ url_for('submit') }}" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="quest_id" value="{{ quest['id'] }}">
+    <p>{{ quest['text'] }}</p>
+    {% if quest['file_required'] %}
+      <input type="file" name="uploaded_image">
+    {% endif %}
+    <input type="text" name="answer">
+    <button type="submit">Submit</button>
+  </form>
+  <form action="{{ url_for('hint', quest_id=quest['id']) }}" method="post">
+    <button type="submit">Use Hint ({{ quest['hints_used'] }})</button>
+  </form>
+  <p>Quest Timer: {{ quest_timer_remaining }}</p>
+  <p>Hint Timer: {{ hint_timer_remaining }}</p>
+</body>
+</html>
