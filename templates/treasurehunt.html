@@ -1,16 +1,15 @@
 <!-- treasurehunt.html -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <title>Treasure Hunt</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-
 <body>
     <h2>Quest {{ quest.quest_number }}</h2>
     <p>{{ quest.text }}</p>
+
     {% if quest.image_path %}
     <img src="{{ url_for('static', filename=quest.image_path) }}" alt="Quest Image" style="max-width:300px;">
     {% endif %}
@@ -33,7 +32,6 @@
         <button id="submit-btn" type="submit">Submit</button>
     </form>
 
-
     {% if quest.hint %}
     <button id="hint-btn" type="button">Show Hint</button>
     <div id="hint-content" style="display:none;">
@@ -41,11 +39,13 @@
     </div>
     {% endif %}
 
+    <!-- Timers -->
+    <div id="overall-timer">
+        ⏳ Time Remaining: --
+    </div>
     <div id="quest-timer"></div>
     <div id="hint-timer"></div>
 
-    <!-- Only ONE JS include here! -->
     <script src="{{ url_for('static', filename='js/timersHandler.js') }}"></script>
 </body>
-
 </html>

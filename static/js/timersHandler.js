@@ -1,100 +1,107 @@
-window.addEventListener('DOMContentLoaded', function() {
-    console.log("DOMContentLoaded fired, fetching /api/timers...");
+window.addEventListener('DOMContentLoaded', function () {
+    console.log("Fetching /api/timers...");
 
-    function formatTime(ts) {
-        if (!ts) return "N/A";
-        return new Date(ts * 1000).toLocaleString();
+    function formatTimeLeft(seconds) {
+        if (seconds < 0) seconds = 0;
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hrs.toString().padStart(2, '0')}:${mins
+            .toString()
+            .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
     fetch('/api/timers')
-      .then(res => {
-        console.log("/api/timers response status:", res.status);
-        return res.json();
-      })
-      .then(data => {
-        console.log("Timer data from /api/timers:", data);
+        .then(res => res.json())
+        .then(data => {
+            console.log("Timer data:", data);
 
-        const questTimerDuration = data.questTimerDuration;
-        const questTimerStart = data.questTimerStart;
-        const hintTimerDuration = data.hintTimerDuration;
-        const hintTimerStart = data.hintTimerStart;
+            const questTimerDuration = data.questTimerDuration;
+            const questTimerStart = data.questTimerStart;
+            const hintTimerDuration = data.hintTimerDuration;
+            const hintTimerStart = data.hintTimerStart;
+            const overallStart = data.overallTimerStart || questTimerStart; // fallback if not sent
+            const overallDuration = 7200; // 2 hours in seconds
 
-        const submitBtn = document.getElementById('submit-btn');
-        const hintBtn = document.getElementById('hint-btn');
-        // You can ignore these now, or keep them for debugging
-        // const questTimerElem = document.getElementById('quest-timer');
-        // const hintTimerElem = document.getElementById('hint-timer');
-        const hintContent = document.getElementById('hint-content');
+            const submitBtn = document.getElementById('submit-btn');
+            const hintBtn = document.getElementById('hint-btn');
+            const hintContent = document.getElementById('hint-content');
+            const overallTimerElem = document.getElementById('overall-timer');
 
-        // --- QUEST TIMER ---
-        function updateQuestTimer() {
-            const now = Math.floor(Date.now() / 1000);
-            const questEnd = questTimerStart + questTimerDuration;
-            const remaining = questEnd - now;
+            // --- Overall 2-hour timer ---
+            function updateOverallTimer() {
+                const now = Math.floor(Date.now() / 1000);
+                const end = overallStart + overallDuration;
+                const remaining = end - now;
 
-            console.log(`[QuestTimer] now: ${now} (${formatTime(now)}), end: ${questEnd} (${formatTime(questEnd)}), remaining: ${remaining}s`);
-            if (questTimerDuration > 0 && remaining > 0) {
-                if (submitBtn) {
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = `⏳ Submit in ${remaining}s`;
+                overallTimerElem.textContent = `⏳ Time Remaining: ${formatTimeLeft(remaining)}`;
+
+                if (remaining <= 0) {
+                    overallTimerElem.textContent = "⏳ Time's up!";
+                    clearInterval(overallInterval);
+                    // Optional: Lock submit when overall timer runs out
+                    if (submitBtn) submitBtn.disabled = true;
                 }
-            } else {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = "Submit";
-                }
-                clearInterval(questInterval);
             }
-        }
-        let questInterval;
-        if (questTimerDuration > 0) {
-            updateQuestTimer();
-            questInterval = setInterval(updateQuestTimer, 1000);
-        } else {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = "Submit";
-            }
-        }
+            updateOverallTimer();
+            const overallInterval = setInterval(updateOverallTimer, 1000);
 
-        // --- HINT TIMER ---
-        function updateHintTimer() {
-            const now = Math.floor(Date.now() / 1000);
-            const hintEnd = hintTimerStart + hintTimerDuration;
-            const remaining = hintEnd - now;
+            // --- Quest delay timer ---
+            function updateQuestTimer() {
+                const now = Math.floor(Date.now() / 1000);
+                const questEnd = questTimerStart + questTimerDuration;
+                const remaining = questEnd - now;
 
-            console.log(`[HintTimer] now: ${now} (${formatTime(now)}), end: ${hintEnd} (${formatTime(hintEnd)}), remaining: ${remaining}s`);
-            if (hintTimerDuration > 0 && remaining > 0) {
-                if (hintBtn) {
-                    hintBtn.disabled = true;
-                    hintBtn.textContent = `🔒 Hint in ${remaining}s`;
+                if (questTimerDuration > 0 && remaining > 0) {
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = `⏳ Submit in ${remaining}s`;
+                    }
+                } else {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = "Submit";
+                    }
+                    clearInterval(questInterval);
                 }
-            } else {
-                if (hintBtn) {
-                    hintBtn.disabled = false;
-                    hintBtn.textContent = "Show Hint";
-                }
-                clearInterval(hintInterval);
             }
-        }
-        let hintInterval;
-        if (hintTimerDuration > 0 && hintBtn) {
-            updateHintTimer();
-            hintInterval = setInterval(updateHintTimer, 1000);
-        } else if (hintBtn) {
-            hintBtn.disabled = false;
-            hintBtn.textContent = "Show Hint";
-        }
+            if (questTimerDuration > 0) {
+                updateQuestTimer();
+                var questInterval = setInterval(updateQuestTimer, 1000);
+            }
 
-        // Show/hide hint content
-        if (hintBtn && hintContent) {
-            hintBtn.addEventListener('click', function() {
-                hintContent.style.display = hintContent.style.display === "none" ? "block" : "none";
-                console.log("Hint button clicked, hintContent.style.display:", hintContent.style.display);
-            });
-        }
-      })
-      .catch(err => {
-        console.error("Failed to load timers:", err);
-      });
+            // --- Hint delay timer ---
+            function updateHintTimer() {
+                const now = Math.floor(Date.now() / 1000);
+                const hintEnd = hintTimerStart + hintTimerDuration;
+                const remaining = hintEnd - now;
+
+                if (hintTimerDuration > 0 && remaining > 0) {
+                    if (hintBtn) {
+                        hintBtn.disabled = true;
+                        hintBtn.textContent = `🔒 Hint in ${remaining}s`;
+                    }
+                } else {
+                    if (hintBtn) {
+                        hintBtn.disabled = false;
+                        hintBtn.textContent = "Show Hint";
+                    }
+                    clearInterval(hintInterval);
+                }
+            }
+            if (hintTimerDuration > 0 && hintBtn) {
+                updateHintTimer();
+                var hintInterval = setInterval(updateHintTimer, 1000);
+            }
+
+            // --- Hint toggle ---
+            if (hintBtn && hintContent) {
+                hintBtn.addEventListener('click', function () {
+                    hintContent.style.display = hintContent.style.display === "none" ? "block" : "none";
+                });
+            }
+        })
+        .catch(err => {
+            console.error("Failed to load timers:", err);
+        });
 });

@@ -43,7 +43,7 @@ def login():
             now_ts = int(datetime.now(timezone.utc).timestamp())
 
             if not team_doc:
-                # Initialize with a default quest order (same for all or randomized)
+                # Initialize with a default quest order (sorted by quest_number)
                 quest_ids = [str(q["_id"]) for q in mongo.db.quests.find().sort("quest_number", 1)]
                 mongo.db.teams.insert_one({
                     "team_name": team,
@@ -124,15 +124,6 @@ def treasurehunt():
     hint_timer_start = progress["hint_timer_start"]
     quest_timer_duration = quest.get('quest_timer_duration', 0)
     hint_timer_duration = quest.get('hint_timer_duration', 0)
-
-    def dt(ts):
-        return datetime.fromtimestamp(ts, timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-
-    quest_end = quest_timer_start + quest_timer_duration
-    hint_end = hint_timer_start + hint_timer_duration
-
-    print(f"[QuestTimer] Start: {dt(quest_timer_start)}, End: {dt(quest_end)}, Now: {dt(now)}, Remaining: {quest_end-now}s")
-    print(f"[HintTimer]  Start: {dt(hint_timer_start)}, End: {dt(hint_end)}, Now: {dt(now)}, Remaining: {hint_end-now}s")
 
     return render_template(
         "treasurehunt.html",
@@ -226,6 +217,7 @@ def submit():
 
     # --- Handle file upload ---
     uploaded_file = request.files.get("uploaded_file")
+    file_uploaded = False
     if uploaded_file and uploaded_file.filename.strip():
         safe_name = secure_filename(uploaded_file.filename)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -243,23 +235,35 @@ def submit():
         uploaded_file.save(file_path)
         print(f"[UPLOAD] Saved file for {team_name} to {file_path}")
 
-        # Save file info in DB for traceability
+        file_uploaded = True
+
+        # Save file info in DB
         mongo.db.teams.update_one(
             {"_id": team_doc["_id"]},
             {"$push": {f"quest_progress.{quest_id}.uploaded_files": str(file_path)}}
         )
+
+    # --- Determine completion logic ---
+    completed = False
+    if correct_answers:
+        if answer and answer in correct_answers:
+            completed = True
+    else:
+        # If no answer required, complete if file is required and uploaded
+        if quest.get("file_required") and file_uploaded:
+            completed = True
 
     # Save progress info
     mongo.db.teams.update_one(
         {"_id": team_doc["_id"]},
         {"$set": {
             f"quest_progress.{quest_id}.submitted_answer": answer,
-            f"quest_progress.{quest_id}.completed": bool(answer and answer in correct_answers)
+            f"quest_progress.{quest_id}.completed": completed
         }}
     )
 
-    # If correct, move to next quest
-    if answer and answer in correct_answers:
+    # If completed, go to next quest
+    if completed:
         if current_idx + 1 < len(team_doc["quest_order"]):
             mongo.db.teams.update_one(
                 {"_id": team_doc["_id"]},
