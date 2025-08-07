@@ -3,49 +3,94 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Treasure Hunt</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 </head>
 <body>
-  <h2>Quest {{ quest.quest_number }}</h2>
-  <p>{{ quest.text }}</p>
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-12 col-lg-10 col-xl-8">
+        
+        <h2>Quest {{ quest.quest_number }}</h2>
 
-  {% if quest.image_path %}
-    <img src="{{ url_for('static', filename=quest.image_path) }}" alt="Quest Image" style="max-width:300px;">
-  {% endif %}
+         <!-- Global Timer -->
+            <div class="row g-3 mt-3">
+              <div class="col-12">
+                <div id="global-timer"></div>
+              </div>
+            </div>
+        
+        <div class="row justify-content-center mb-4">
+          <div class="col-12 col-md-10">
+            <p>{{ quest.text }}</p>
+          </div>
+        </div>
 
-  <form id="answer-form" action="/submit" method="post" enctype="multipart/form-data" style="margin-top:1rem;">
-    <input type="hidden" name="quest_id" value="{{ quest._id }}">
+        {% if quest.image_path %}
+        <div class="row justify-content-center mb-4">
+          <div class="col-12 col-sm-8 col-md-6">
+            <img src="{{ url_for('static', filename=quest.image_path) }}" 
+                 alt="Quest Image" 
+                 class="img-fluid"
+                 style="max-width:300px;">
+          </div>
+        </div>
+        {% endif %}
 
-    {% if quest.correct_answers and quest.correct_answers.strip() %}
-      <label for="answer">Your Answer:</label>
-      <input type="text" id="answer" name="answer">
-      <br>
-    {% endif %}
+        <div class="row justify-content-center">
+          <div class="col-12 col-md-8 col-lg-6">
+            
+            <form id="answer-form" action="/submit" method="post" enctype="multipart/form-data">
+              <input type="hidden" name="quest_id" value="{{ quest._id }}">
 
-    {% if quest.file_required %}
-      <label for="uploaded_file">Upload File:</label>
-      <input type="file" id="uploaded_file" name="uploaded_file">
-      <br>
-    {% endif %}
+              {% if quest.correct_answers and quest.correct_answers.strip() %}
+              <div class="mb-3">
+                <label for="answer" class="form-label">Your Answer:</label>
+                <input type="text" class="form-control" id="answer" name="answer">
+              </div>
+              {% endif %}
 
-    <button id="submit-btn" type="submit">Submit</button>
-  </form>
+              {% if quest.file_required %}
+              <div class="mb-3">
+                <label for="uploaded_file" class="form-label">Upload File:</label>
+                <input type="file" class="form-control" id="uploaded_file" name="uploaded_file">
+              </div>
+              {% endif %}
 
-  <!-- Skip button -->
-  <form id="skip-form" action="/skip" method="post" style="margin-top:0.5rem;">
-    <button id="skip-btn" type="submit">Skip</button>
-  </form>
+              <div class="row g-2 mb-3">
+                <div class="col-8">
+                  <div class="d-grid">
+                    <button id="submit-btn" type="submit" class="btn">Submit</button>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="d-grid">
+                    <button id="skip-btn" type="button" class="btn">Skip</button>
+                  </div>
+                </div>
+              </div>
+            </form>
 
-  {% if quest.hint %}
-    <button id="hint-btn" type="button" style="margin-top:1rem;">Show Hint</button>
-    <div id="hint-content" style="display:none;"><p>{{ quest.hint }}</p></div>
-  {% endif %}
+            {% if quest.hint %}
+            <div class="d-grid mb-3">
+              <button id="hint-btn" type="button" class="btn">Show Hint</button>
+            </div>
+            <div id="hint-content" style="display:none;">
+              <p>{{ quest.hint }}</p>
+            </div>
+            {% endif %}
 
-  <div id="quest-timer"></div>
-  <div id="hint-timer"></div>
-  <div id="global-timer"></div>
+           
+            
+          </div>
+        </div>
+        
+      </div>
+    </div>
+  </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/timersHandler.js') }}"></script>
 </body>
 </html>

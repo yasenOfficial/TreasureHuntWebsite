@@ -1,0 +1,539 @@
+/* Bootstrap + Medieval Bulgarian Treasure Hunt Styles */
+@import url('https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&display=swap');
+
+:root {
+  --bg-primary: #2c1810;
+  --bg-secondary: #3d2817;
+  --bg-card: #4a3220;
+  --accent-gold: #d4af37;
+  --accent-copper: #b87333;
+  --text-light: #f4f1e8;
+  --text-dark: #2c1810;
+  --border-dark: #1a0f08;
+  --success: #228b22;
+  --error: #8b0000;
+  --shadow: rgba(0, 0, 0, 0.6);
+}
+
+/* Override Bootstrap defaults */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Cinzel', serif !important;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%) !important;
+  color: var(--text-light) !important;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Medieval background pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(184, 115, 51, 0.1) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d4af37' fill-opacity='0.05'%3E%3Cpath d='M20 20c0 11.046-8.954 20-20 20s-20-8.954-20-20 8.954-20 20-20 20 8.954 20 20zm-30 0c0 5.523 4.477 10 10 10s10-4.477 10-10-4.477-10-10-10-10 4.477-10 10z'/%3E%3C/g%3E%3C/svg%3E");
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Headers */
+h1, h2 {
+  font-family: 'Cinzel Decorative', serif !important;
+  text-align: center;
+  margin-bottom: 2rem;
+  text-shadow: 2px 2px 4px var(--shadow);
+  position: relative;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  color: var(--accent-gold);
+  margin-bottom: 3rem;
+  padding-top: 2rem;
+}
+
+h1::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(200px, 80%);
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+}
+
+h2 {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  color: var(--accent-copper);
+  margin-bottom: 1.5rem;
+  padding-top: 2rem;
+}
+
+/* Quest content paragraph */
+p {
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  line-height: 1.8;
+  margin-bottom: 2rem;
+  text-align: center;
+  background: rgba(74, 50, 32, 0.6);
+  padding: 1.5rem;
+  border-radius: 10px;
+  border: 2px solid var(--accent-copper);
+  box-shadow: 0 4px 15px var(--shadow);
+  position: relative;
+  color: var(--text-light) !important;
+}
+
+p::before {
+  content: '"';
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  color: var(--accent-gold);
+  position: absolute;
+  top: -10px;
+  left: 15px;
+  opacity: 0.3;
+}
+
+/* Images - keeping your existing styles but with Bootstrap responsive classes */
+img {
+  display: block;
+  margin: 2rem auto;
+  border-radius: 15px;
+  border: 4px solid var(--accent-gold);
+  box-shadow: 0 8px 25px var(--shadow);
+  max-width: 100% !important;
+  height: auto;
+}
+
+/* Forms - Enhanced with Bootstrap structure */
+form {
+  background: linear-gradient(145deg, var(--bg-card), var(--bg-secondary));
+  padding: 2rem;
+  border-radius: 15px;
+  border: 3px solid var(--accent-copper);
+  box-shadow: 0 8px 25px var(--shadow);
+  margin: 2rem auto;
+  max-width: 500px;
+  position: relative;
+}
+
+form::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, var(--accent-gold), var(--accent-copper), var(--accent-gold));
+  z-index: -1;
+  border-radius: 18px;
+  opacity: 0.3;
+}
+
+/* Labels */
+label {
+  display: block;
+  font-weight: 600 !important;
+  margin-bottom: 0.5rem;
+  color: var(--accent-gold) !important;
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Cinzel', serif !important;
+}
+
+/* Input fields - Override Bootstrap styles */
+input[type="text"],
+input[type="password"],
+.form-control {
+  width: 100% !important;
+  padding: 1rem !important;
+  margin-bottom: 1.5rem;
+  border: 2px solid var(--accent-copper) !important;
+  border-radius: 8px !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-light) !important;
+  font-family: 'Cinzel', serif !important;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  transition: all 0.3s ease;
+  box-shadow: none !important;
+}
+
+/* File input custom styling */
+input[type="file"],
+.form-control[type="file"] {
+  width: 100% !important;
+  padding: 0 !important;
+  margin-bottom: 1.5rem;
+  border: 2px solid var(--accent-copper) !important;
+  border-radius: 8px !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-light) !important;
+  font-family: 'Cinzel', serif !important;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  transition: all 0.3s ease;
+  box-shadow: none !important;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+/* Style the file input button */
+input[type="file"]::file-selector-button,
+.form-control[type="file"]::file-selector-button {
+  background: linear-gradient(145deg, var(--accent-gold), var(--accent-copper)) !important;
+  color: var(--text-dark) !important;
+  border: none !important;
+  padding: 1rem 1.5rem !important;
+  font-family: 'Cinzel', serif !important;
+  font-size: clamp(0.9rem, 2vw, 1rem) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 1rem;
+  border-radius: 6px 0 0 6px !important;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+/* Firefox file input button */
+input[type="file"]::-moz-file-upload-button,
+.form-control[type="file"]::-moz-file-upload-button {
+  background: linear-gradient(145deg, var(--accent-gold), var(--accent-copper)) !important;
+  color: var(--text-dark) !important;
+  border: none !important;
+  padding: 1rem 1.5rem !important;
+  font-family: 'Cinzel', serif !important;
+  font-size: clamp(0.9rem, 2vw, 1rem) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-right: 1rem;
+  border-radius: 6px 0 0 6px !important;
+  height: 100%;
+}
+
+/* File input text area styling */
+input[type="file"],
+.form-control[type="file"] {
+  padding-right: 1rem !important;
+  line-height: 1.5;
+  min-height: 3.2rem;
+}
+
+/* Remove any potential border gaps */
+input[type="file"]::after,
+.form-control[type="file"]::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--bg-primary);
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="file"]:focus,
+.form-control:focus {
+  outline: none !important;
+  border-color: var(--accent-gold) !important;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.3) !important;
+  transform: translateY(-2px);
+  background: var(--bg-primary) !important;
+  color: var(--text-light) !important;
+}
+
+/* Buttons - Override Bootstrap button styles */
+button,
+.btn {
+  background: linear-gradient(145deg, var(--accent-gold), var(--accent-copper)) !important;
+  color: var(--text-dark) !important;
+  border: none !important;
+  padding: 1rem 2rem !important;
+  border-radius: 10px !important;
+  font-family: 'Cinzel', serif !important;
+  font-size: clamp(0.9rem, 2vw, 1.1rem) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3) !important;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+button::before,
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+button:hover::before,
+.btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+button:hover,
+.btn:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4) !important;
+  color: var(--text-dark) !important;
+}
+
+button:active,
+.btn:active {
+  transform: translateY(-1px) !important;
+}
+
+/* Skip button specific styling */
+#skip-btn {
+  background: linear-gradient(145deg, var(--bg-secondary), var(--bg-primary)) !important;
+  color: var(--text-light) !important;
+  border: 2px solid var(--accent-copper) !important;
+}
+
+#skip-btn:hover {
+  background: linear-gradient(145deg, var(--accent-copper), var(--bg-secondary)) !important;
+  color: var(--text-light) !important;
+}
+
+/* Skip form spacing */
+#skip-form {
+  margin-top: 0.5rem;
+}
+
+/* Hint button */
+#hint-btn {
+  background: linear-gradient(145deg, #8b4513, #654321) !important;
+  margin-top: 1rem;
+  width: 100%;
+  color: var(--text-light) !important;
+}
+
+#hint-btn:hover {
+  color: var(--text-light) !important;
+}
+
+/* Hint content */
+#hint-content {
+  background: var(--bg-card);
+  border: 2px solid var(--accent-gold);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+#hint-content p {
+  margin-bottom: 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Timer displays */
+#quest-timer,
+#hint-timer,
+#global-timer {
+  background: var(--bg-primary);
+  border: 2px solid var(--accent-gold);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  font-weight: 600;
+  color: var(--accent-gold);
+  box-shadow: 0 4px 15px var(--shadow);
+  font-family: 'Cinzel', serif;
+}
+
+/* Error messages */
+p[style*="color:red"] {
+  color: var(--error) !important;
+  background: rgba(139, 0, 0, 0.1) !important;
+  border-color: var(--error) !important;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Success messages */
+.success {
+  color: var(--success) !important;
+  background: rgba(34, 139, 34, 0.1) !important;
+  border-color: var(--success) !important;
+}
+
+/* Bootstrap Container Override */
+.container,
+.container-fluid {
+  padding: 2rem 15px;
+}
+
+/* Bootstrap responsive utilities enhanced */
+@media (max-width: 768px) {
+  .container,
+  .container-fluid {
+    padding: 1rem 15px;
+  }
+  
+  h1 {
+    margin-bottom: 2rem;
+    padding-top: 1rem;
+  }
+  
+  h1::after {
+    width: min(150px, 70%);
+  }
+  
+  h2 {
+    padding-top: 1rem;
+  }
+  
+  p {
+    padding: 1rem;
+  }
+  
+  form {
+    padding: 1.5rem;
+    margin: 1rem auto;
+  }
+  
+  button,
+  .btn {
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+  
+  #skip-form button {
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .container,
+  .container-fluid {
+    padding: 0.5rem 10px;
+  }
+  
+  p {
+    padding: 0.8rem;
+  }
+  
+  p::before {
+    font-size: 2.5rem;
+    top: -5px;
+    left: 10px;
+  }
+  
+  form {
+    padding: 1rem;
+    margin: 0.5rem auto;
+  }
+  
+  img {
+    border-width: 2px;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  body::before {
+    display: none;
+  }
+  
+  button,
+  .btn {
+    display: none !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  :root {
+    --bg-primary: #000;
+    --bg-secondary: #111;
+    --bg-card: #222;
+    --text-light: #fff;
+    --accent-gold: #ffff00;
+    --accent-copper: #ff8c00;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Bootstrap utility overrides for medieval theme */
+.text-muted {
+  color: var(--accent-copper) !important;
+}
+
+.text-primary {
+  color: var(--accent-gold) !important;
+}
+
+.bg-primary {
+  background-color: var(--bg-primary) !important;
+}
+
+.bg-secondary {
+  background-color: var(--bg-secondary) !important;
+}
+
+.border-primary {
+  border-color: var(--accent-gold) !important;
+}
+
+.border-secondary {
+  border-color: var(--accent-copper) !important;
+}

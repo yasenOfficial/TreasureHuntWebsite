@@ -23,30 +23,37 @@ window.addEventListener('DOMContentLoaded', function () {
             const overallStart = data.overallTimerStart || questTimerStart; // fallback if not sent
             const overallDuration = 7200; // 2 hours in seconds
 
+            // Get DOM elements
             const submitBtn = document.getElementById('submit-btn');
             const hintBtn = document.getElementById('hint-btn');
             const hintContent = document.getElementById('hint-content');
-            const overallTimerElem = document.getElementById('overall-timer');
+            const globalTimerElem = document.getElementById('global-timer');
 
-            // --- Overall 2-hour timer ---
-            function updateOverallTimer() {
+            // --- Global/Overall 2-hour timer ---
+            function updateGlobalTimer() {
+                if (!globalTimerElem) return; // Safety check
+                
                 const now = Math.floor(Date.now() / 1000);
                 const end = overallStart + overallDuration;
                 const remaining = end - now;
 
-                overallTimerElem.textContent = `⏳ Time Remaining: ${formatTimeLeft(remaining)}`;
+                globalTimerElem.textContent = `⏰ Total Time Remaining: ${formatTimeLeft(remaining)}`;
 
                 if (remaining <= 0) {
-                    overallTimerElem.textContent = "⏳ Time's up!";
-                    clearInterval(overallInterval);
-                    // Optional: Lock submit when overall timer runs out
+                    globalTimerElem.textContent = "⏰ Time's up!";
+                    globalTimerElem.style.color = 'var(--error)';
+                    clearInterval(globalInterval);
+                    // Lock submit when overall timer runs out
                     if (submitBtn) submitBtn.disabled = true;
                 }
             }
-            updateOverallTimer();
-            const overallInterval = setInterval(updateOverallTimer, 1000);
+            
+            if (globalTimerElem) {
+                updateGlobalTimer();
+                var globalInterval = setInterval(updateGlobalTimer, 1000);
+            }
 
-            // --- Quest delay timer ---
+            // --- Quest delay timer (updates submit button only) ---
             function updateQuestTimer() {
                 const now = Math.floor(Date.now() / 1000);
                 const questEnd = questTimerStart + questTimerDuration;
@@ -65,12 +72,13 @@ window.addEventListener('DOMContentLoaded', function () {
                     clearInterval(questInterval);
                 }
             }
+            
             if (questTimerDuration > 0) {
                 updateQuestTimer();
                 var questInterval = setInterval(updateQuestTimer, 1000);
             }
 
-            // --- Hint delay timer ---
+            // --- Hint delay timer (updates hint button only) ---
             function updateHintTimer() {
                 const now = Math.floor(Date.now() / 1000);
                 const hintEnd = hintTimerStart + hintTimerDuration;
@@ -89,6 +97,7 @@ window.addEventListener('DOMContentLoaded', function () {
                     clearInterval(hintInterval);
                 }
             }
+            
             if (hintTimerDuration > 0 && hintBtn) {
                 updateHintTimer();
                 var hintInterval = setInterval(updateHintTimer, 1000);
@@ -97,11 +106,45 @@ window.addEventListener('DOMContentLoaded', function () {
             // --- Hint toggle ---
             if (hintBtn && hintContent) {
                 hintBtn.addEventListener('click', function () {
-                    hintContent.style.display = hintContent.style.display === "none" ? "block" : "none";
+                    if (hintContent.style.display === "none" || hintContent.style.display === "") {
+                        hintContent.style.display = "block";
+                        if (!hintBtn.disabled) {
+                            hintBtn.textContent = "Hide Hint";
+                        }
+                    } else {
+                        hintContent.style.display = "none";
+                        if (!hintBtn.disabled) {
+                            hintBtn.textContent = "Show Hint";
+                        }
+                    }
+                });
+            }
+
+            // --- Skip button functionality ---
+            const skipBtn = document.getElementById('skip-btn');
+            if (skipBtn) {
+                skipBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); // Prevent form submission
+                    
+                    // Create a form to submit the skip action
+                    const skipForm = document.createElement('form');
+                    skipForm.method = 'POST';
+                    skipForm.action = '/skip';
+                    skipForm.style.display = 'none';
+                    
+                    document.body.appendChild(skipForm);
+                    skipForm.submit();
                 });
             }
         })
         .catch(err => {
             console.error("Failed to load timers:", err);
+            
+            // Fallback: Show error in global timer if it exists
+            const globalTimerElem = document.getElementById('global-timer');
+            if (globalTimerElem) {
+                globalTimerElem.textContent = "❌ Timer loading failed";
+                globalTimerElem.style.color = 'var(--error)';
+            }
         });
 });
