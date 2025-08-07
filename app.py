@@ -107,7 +107,6 @@ def treasurehunt():
 
     # Current progress for this quest
     progress = team_doc.get("quest_progress", {}).get(quest_id, {})
-
     # Start timers if not set
     if "quest_timer_start" not in progress:
         progress["quest_timer_start"] = now
@@ -274,6 +273,48 @@ def submit():
             return "🎉 All quests completed!"
 
     return redirect(url_for('treasurehunt'))
+
+
+# -------------------------
+# SKIP QUEST
+# -------------------------
+@app.route('/skip', methods=['POST'])
+def skip():
+    """Mark current quest as skipped and move to the next one."""
+    team_name = session.get('team_name')
+    if not team_name:
+        return redirect(url_for('login'))
+
+    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    if not team_doc:
+        return redirect(url_for('logout'))
+
+    now = int(datetime.now(timezone.utc).timestamp())
+    global_start = team_doc.get("global_timer_start", now)
+    if now >= global_start + GLOBAL_TIMER_DURATION:
+        return redirect(url_for('time_up'))
+
+    current_idx = team_doc["current_quest_idx"]
+    quest_id = team_doc["quest_order"][current_idx]
+
+    # Mark skipped + completed for stats/consistency
+    mongo.db.teams.update_one(
+        {"_id": team_doc["_id"]},
+        {"$set": {
+            f"quest_progress.{quest_id}.skipped": True,
+            f"quest_progress.{quest_id}.completed": True
+        }}
+    )
+
+    # Move to next quest if any
+    if current_idx + 1 < len(team_doc["quest_order"]):
+        mongo.db.teams.update_one(
+            {"_id": team_doc["_id"]},
+            {"$set": {"current_quest_idx": current_idx + 1}}
+        )
+        return redirect(url_for('treasurehunt'))
+    else:
+        return "🎉 All quests completed!"
 
 
 # -------------------------
