@@ -1,130 +1,285 @@
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify
+from flask_pymongo import PyMongo
+from bson.objectid import ObjectId
+from datetime import datetime, timezone
 import os
-import datetime
-from flask import Flask, render_template, request, redirect, jsonify, make_response
-from flask_jwt_extended import (
-    JWTManager, create_access_token, create_refresh_token, jwt_required,
-    get_jwt_identity, set_refresh_cookies, unset_jwt_cookies
-)
-
-from pymongo import MongoClient
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
+import pathlib
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET")
-app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
-app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
-app.config["JWT_REFRESH_COOKIE_PATH"] = "/token/refresh"
-app.config["JWT_COOKIE_SECURE"] = False  # True if HTTPS
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(minutes=15)
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = datetime.timedelta(days=7)
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
+app.config['MONGO_URI'] = os.getenv("MONGO_URI")
 
-jwt = JWTManager(app)
+mongo = PyMongo(app)
 
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client["treasurehunt"]
-quests_collection = db["quests"]
+# --- Global timer duration (in seconds) ---
+GLOBAL_TIMER_DURATION = 2 * 60 * 60  # 2 hours
 
-# Team credentials from .env
-TEAMS = {
-    "TEAM1": {"username": os.getenv("TEAM1USER"), "password": os.getenv("TEAM1PASS")},
-    "TEAM2": {"username": os.getenv("TEAM2USER"), "password": os.getenv("TEAM2PASS")},
-    "TEAM3": {"username": os.getenv("TEAM3USER"), "password": os.getenv("TEAM3PASS")},
-    "TEAM4": {"username": os.getenv("TEAM4USER"), "password": os.getenv("TEAM4PASS")},
-}
+# --- Dynamically load teams from env ---
+USERS = {}
+for i in range(1, 5):  # Adjust if more teams
+    user = os.getenv(f"TEAM{i}USER")
+    pw = os.getenv(f"TEAM{i}PASS")
+    if user and pw:
+        USERS[user] = pw
 
 
-@app.route("/", methods=["GET"])
-def index():
-    return render_template("index.html", message="Моля, въведете вашите данни за вход")
-
-
-@app.route("/login", methods=["POST"])
+# -------------------------
+# LOGIN
+# -------------------------
+@app.route('/', methods=['GET', 'POST'])
 def login():
-    username = request.form.get("username")
-    password = request.form.get("password")
-    for team_name, creds in TEAMS.items():
-        if creds["username"] == username and creds["password"] == password:
-            # Issue tokens
-            access_token = create_access_token(identity=team_name)
-            refresh_token = create_refresh_token(identity=team_name)
+    if request.method == 'POST':
+        team = request.form.get('team')
+        password = request.form.get('password')
+        if USERS.get(team) == password:
+            session['team_name'] = team
 
-            resp = make_response(redirect(f"/treasurehunt"))
-            # Set JWT cookies
-            resp.set_cookie("access_token_cookie", access_token, httponly=True, max_age=15*60)
-            set_refresh_cookies(resp, refresh_token)
-            return resp
-    # Failed login
-    return render_template("index.html", message="Невалидни данни за вход"), 401
+            # Ensure team doc exists
+            team_doc = mongo.db.teams.find_one({"team_name": team})
+            now_ts = int(datetime.now(timezone.utc).timestamp())
+
+            if not team_doc:
+                # Initialize with a default quest order (same for all or randomized)
+                quest_ids = [str(q["_id"]) for q in mongo.db.quests.find().sort("quest_number", 1)]
+                mongo.db.teams.insert_one({
+                    "team_name": team,
+                    "quest_order": quest_ids,
+                    "current_quest_idx": 0,
+                    "quest_progress": {},
+                    "global_timer_start": now_ts
+                })
+            else:
+                # Ensure global timer exists for old teams
+                if "global_timer_start" not in team_doc:
+                    mongo.db.teams.update_one(
+                        {"_id": team_doc["_id"]},
+                        {"$set": {"global_timer_start": now_ts}}
+                    )
+
+            return redirect(url_for('treasurehunt'))
+        else:
+            return render_template('login.html', error="Invalid credentials")
+    return render_template('login.html')
 
 
-@app.route("/treasurehunt")
-@jwt_required()
+# -------------------------
+# TIME UP PAGE
+# -------------------------
+@app.route('/time-up')
+def time_up():
+    return "<h1>⏳ Time's up!</h1><p>Your 2 hours have expired.</p>"
+
+
+# -------------------------
+# TREASURE HUNT MAIN PAGE
+# -------------------------
+@app.route('/treasurehunt')
 def treasurehunt():
-    team_name = get_jwt_identity()
-    # Find the next incomplete quest for the team
-    quest = quests_collection.find_one({"team_name": team_name, "completed": False}, sort=[("quest_number", 1)])
-    if not quest:
-        return redirect(f"/gamefinished")
-    return render_template("treasurehunt.html", quest=quest, team=team_name)
+    team_name = session.get('team_name')
+    if not team_name:
+        return redirect(url_for('login'))
+
+    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    if not team_doc:
+        return redirect(url_for('logout'))
+
+    now = int(datetime.now(timezone.utc).timestamp())
+
+    # --- Check global timer expiration ---
+    global_start = team_doc.get("global_timer_start")
+    if global_start is None:
+        global_start = now
+        mongo.db.teams.update_one(
+            {"_id": team_doc["_id"]},
+            {"$set": {"global_timer_start": global_start}}
+        )
+    if now >= global_start + GLOBAL_TIMER_DURATION:
+        return redirect(url_for('time_up'))
+
+    # Get current quest ID
+    current_idx = team_doc["current_quest_idx"]
+    quest_id = team_doc["quest_order"][current_idx]
+    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+
+    # Current progress for this quest
+    progress = team_doc.get("quest_progress", {}).get(quest_id, {})
+
+    # Start timers if not set
+    if "quest_timer_start" not in progress:
+        progress["quest_timer_start"] = now
+    if "hint_timer_start" not in progress:
+        progress["hint_timer_start"] = now
+
+    # Update in DB if new
+    mongo.db.teams.update_one(
+        {"_id": team_doc["_id"]},
+        {"$set": {f"quest_progress.{quest_id}": progress}}
+    )
+
+    quest_timer_start = progress["quest_timer_start"]
+    hint_timer_start = progress["hint_timer_start"]
+    quest_timer_duration = quest.get('quest_timer_duration', 0)
+    hint_timer_duration = quest.get('hint_timer_duration', 0)
+
+    def dt(ts):
+        return datetime.fromtimestamp(ts, timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+
+    quest_end = quest_timer_start + quest_timer_duration
+    hint_end = hint_timer_start + hint_timer_duration
+
+    print(f"[QuestTimer] Start: {dt(quest_timer_start)}, End: {dt(quest_end)}, Now: {dt(now)}, Remaining: {quest_end-now}s")
+    print(f"[HintTimer]  Start: {dt(hint_timer_start)}, End: {dt(hint_end)}, Now: {dt(now)}, Remaining: {hint_end-now}s")
+
+    return render_template(
+        "treasurehunt.html",
+        quest=quest,
+        quest_timer_duration=quest_timer_duration,
+        quest_timer_start=quest_timer_start,
+        hint_timer_duration=hint_timer_duration,
+        hint_timer_start=hint_timer_start,
+        global_timer_duration=GLOBAL_TIMER_DURATION,
+        global_timer_start=global_start
+    )
 
 
-@app.route("/submit", methods=["POST"])
-@jwt_required()
+# -------------------------
+# API: TIMERS
+# -------------------------
+@app.route('/api/timers')
+def api_timers():
+    team_name = session.get('team_name')
+    if not team_name:
+        return jsonify({"error": "Not logged in"}), 401
+
+    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    if not team_doc:
+        return jsonify({"error": "Team not found"}), 404
+
+    now = int(datetime.now(timezone.utc).timestamp())
+
+    # --- Check global timer expiration ---
+    global_start = team_doc.get("global_timer_start")
+    if global_start is None:
+        global_start = now
+        mongo.db.teams.update_one(
+            {"_id": team_doc["_id"]},
+            {"$set": {"global_timer_start": global_start}}
+        )
+    if now >= global_start + GLOBAL_TIMER_DURATION:
+        return jsonify({"error": "Time's up"}), 403
+
+    current_idx = team_doc["current_quest_idx"]
+    quest_id = team_doc["quest_order"][current_idx]
+    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+
+    progress = team_doc.get("quest_progress", {}).get(quest_id, {})
+    if "quest_timer_start" not in progress:
+        progress["quest_timer_start"] = now
+    if "hint_timer_start" not in progress:
+        progress["hint_timer_start"] = now
+
+    mongo.db.teams.update_one(
+        {"_id": team_doc["_id"]},
+        {"$set": {f"quest_progress.{quest_id}": progress}}
+    )
+
+    return jsonify({
+        "questTimerDuration": quest.get('quest_timer_duration', 0),
+        "questTimerStart": progress["quest_timer_start"],
+        "hintTimerDuration": quest.get('hint_timer_duration', 0),
+        "hintTimerStart": progress["hint_timer_start"],
+        "globalTimerDuration": GLOBAL_TIMER_DURATION,
+        "globalTimerStart": global_start
+    })
+
+
+# -------------------------
+# SUBMIT ANSWER
+# -------------------------
+@app.route('/submit', methods=['POST'])
 def submit():
-    team_name = get_jwt_identity()
-    quest_id = request.form.get("quest_id")
-    answer = request.form.get("answer", "")
+    team_name = session.get('team_name')
+    if not team_name:
+        return redirect(url_for('login'))
 
-    quest = quests_collection.find_one({"_id": quest_id, "team_name": team_name})
-    if not quest:
-        return "Quest not found", 404
+    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    if not team_doc:
+        return redirect(url_for('logout'))
 
-    correct_answers = [a.strip().lower() for a in quest["correct_answers"].split("|")]
-    is_correct = answer.strip().lower() in correct_answers
+    now = int(datetime.now(timezone.utc).timestamp())
 
-    if answer.strip().lower() == "skip":
-        quests_collection.update_one({"_id": quest_id}, {"$set": {"skipped": True, "completed": True}})
-        return redirect("/treasurehunt?skipped=true")
+    # --- Block submissions if global timer expired ---
+    global_start = team_doc.get("global_timer_start", now)
+    if now >= global_start + GLOBAL_TIMER_DURATION:
+        return redirect(url_for('time_up'))
 
-    if is_correct:
-        quests_collection.update_one({"_id": quest_id}, {"$set": {"completed": True}})
-        return redirect("/treasurehunt?success=true")
-    else:
-        return redirect("/treasurehunt?success=false")
+    current_idx = team_doc["current_quest_idx"]
+    quest_id = team_doc["quest_order"][current_idx]
+    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+
+    answer = request.form.get('answer', '').strip().lower()
+    correct_answers = [a.strip().lower() for a in quest.get("correct_answers", "").split("|") if a.strip()]
+
+    # --- Handle file upload ---
+    uploaded_file = request.files.get("uploaded_file")
+    if uploaded_file and uploaded_file.filename.strip():
+        safe_name = secure_filename(uploaded_file.filename)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Extract team number (team1 -> 1)
+        team_number = ''.join(filter(str.isdigit, team_name)) or "unknown"
+
+        # Create output folder
+        save_dir = pathlib.Path("output") / f"team_{team_number}"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # Full file path
+        file_path = save_dir / f"{timestamp}_{safe_name}"
+
+        uploaded_file.save(file_path)
+        print(f"[UPLOAD] Saved file for {team_name} to {file_path}")
+
+        # Save file info in DB for traceability
+        mongo.db.teams.update_one(
+            {"_id": team_doc["_id"]},
+            {"$push": {f"quest_progress.{quest_id}.uploaded_files": str(file_path)}}
+        )
+
+    # Save progress info
+    mongo.db.teams.update_one(
+        {"_id": team_doc["_id"]},
+        {"$set": {
+            f"quest_progress.{quest_id}.submitted_answer": answer,
+            f"quest_progress.{quest_id}.completed": bool(answer and answer in correct_answers)
+        }}
+    )
+
+    # If correct, move to next quest
+    if answer and answer in correct_answers:
+        if current_idx + 1 < len(team_doc["quest_order"]):
+            mongo.db.teams.update_one(
+                {"_id": team_doc["_id"]},
+                {"$set": {"current_quest_idx": current_idx + 1}}
+            )
+            return redirect(url_for('treasurehunt'))
+        else:
+            return "🎉 All quests completed!"
+
+    return redirect(url_for('treasurehunt'))
 
 
-@app.route("/logout")
+# -------------------------
+# LOGOUT
+# -------------------------
+@app.route('/logout')
 def logout():
-    resp = make_response(redirect("/"))
-    unset_jwt_cookies(resp)
-    resp.set_cookie("access_token_cookie", "", expires=0)
-    return resp
+    session.clear()
+    return redirect(url_for('login'))
 
-@app.route("/token/refresh", methods=["POST"])
-@jwt_required(refresh=True)   # ✅ Use this!
-def refresh():
-    team_name = get_jwt_identity()
-    access_token = create_access_token(identity=team_name)
-    resp = jsonify({"msg": "Token refreshed"})
-    resp.set_cookie("access_token_cookie", access_token, httponly=True, max_age=15*60)
-    return resp
 
-@app.route("/gamefinished")
-@jwt_required()
-def gamefinished():
-    team_name = get_jwt_identity()
-    # You can aggregate skip/hint/complete stats here
-    total = quests_collection.count_documents({"team_name": team_name})
-    completed = quests_collection.count_documents({"team_name": team_name, "completed": True})
-    skipped = quests_collection.count_documents({"team_name": team_name, "skipped": True})
-    hints = sum([q.get("hints_used", 0) for q in quests_collection.find({"team_name": team_name})])
-    return render_template("gamefinished.html", total=total, completed=completed, skipped=skipped, hints=hints, team=team_name)
-
-# --- Utility: Create index.html mockup if you want!
-# You must create templates/index.html, templates/treasurehunt.html, templates/gamefinished.html
-
-if __name__ == "__main__":
-    app.run(port=8080, debug=True)
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=9000, debug=True)

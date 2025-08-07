@@ -5,3 +5,7 @@ __pychache__/
 *.pyd
 *.pdb
 .env/
+
+static/images/
+static/audio/
+static/videos/
