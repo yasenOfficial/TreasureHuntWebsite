@@ -9,3 +9,5 @@ __pychache__/
 static/images/
 static/audio/
 static/videos/
+
+output/

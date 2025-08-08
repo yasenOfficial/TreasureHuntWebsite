@@ -188,7 +188,7 @@ def api_timers():
 
 
 # -------------------------
-# SUBMIT ANSWER
+# SUBMIT ANSWER (now supports grid cipher)
 # -------------------------
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -211,7 +211,9 @@ def submit():
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
 
+    # Answers
     answer = request.form.get('answer', '').strip().lower()
+    grid_cipher = request.form.get('grid_cipher', '').strip().lower()  # <- NEW
     correct_answers = [a.strip().lower() for a in quest.get("correct_answers", "").split("|") if a.strip()]
 
     # --- Handle file upload ---
@@ -244,19 +246,28 @@ def submit():
 
     # --- Determine completion logic ---
     completed = False
-    if correct_answers:
-        if answer and answer in correct_answers:
+    has_grid = bool(quest.get("grid"))  # if a grid like "3x3" is defined
+
+    # Priority: if grid is present, use grid_cipher against correct_answers
+    if has_grid:
+        if grid_cipher and (not correct_answers or grid_cipher in correct_answers):
             completed = True
     else:
-        # If no answer required, complete if file is required and uploaded
-        if quest.get("file_required") and file_uploaded:
-            completed = True
+        # Non-grid: either a normal text answer (if expected), or file-only flow
+        if correct_answers:
+            if answer and answer in correct_answers:
+                completed = True
+        else:
+            # If no answer required, complete if file is required and uploaded
+            if quest.get("file_required") and file_uploaded:
+                completed = True
 
     # Save progress info
     mongo.db.teams.update_one(
         {"_id": team_doc["_id"]},
         {"$set": {
             f"quest_progress.{quest_id}.submitted_answer": answer,
+            f"quest_progress.{quest_id}.grid_cipher": grid_cipher if has_grid else None,
             f"quest_progress.{quest_id}.completed": completed
         }}
     )
