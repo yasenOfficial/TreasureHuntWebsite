@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for, jsonify
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify, abort
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from datetime import datetime, timezone
@@ -16,7 +16,7 @@ app.config['MONGO_URI'] = os.getenv("MONGO_URI")
 mongo = PyMongo(app)
 
 # --- Global timer duration (in seconds) ---
-GLOBAL_TIMER_DURATION = 2 * 60 * 60  # 2 hours
+GLOBAL_TIMER_DURATION = 15  # 2 hours
 
 # --- Dynamically load teams from env ---
 USERS = {}
@@ -67,11 +67,12 @@ def login():
 
 
 # -------------------------
-# TIME UP PAGE
+# TIME UP PAGE (kept but redirects to gamefinished)
 # -------------------------
 @app.route('/time-up')
 def time_up():
-    return "<h1>⏳ Time's up!</h1><p>Your 2 hours have expired.</p>"
+    # Keep the route for compatibility, but unify UI at /gamefinished
+    return redirect(url_for('gamefinished', status='timeup'))
 
 
 # -------------------------
@@ -98,7 +99,7 @@ def treasurehunt():
             {"$set": {"global_timer_start": global_start}}
         )
     if now >= global_start + GLOBAL_TIMER_DURATION:
-        return redirect(url_for('time_up'))
+        return redirect(url_for('gamefinished', status='timeup'))
 
     # Current quest
     current_idx = team_doc["current_quest_idx"]
@@ -159,7 +160,10 @@ def api_timers():
             {"$set": {"global_timer_start": global_start}}
         )
     if now >= global_start + GLOBAL_TIMER_DURATION:
-        return jsonify({"error": "Time's up"}), 403
+        return jsonify({
+            "error": "Time's up",
+            "redirect": url_for('gamefinished', status='timeup')
+        }), 403
 
     # Current quest
     current_idx = team_doc["current_quest_idx"]
@@ -203,7 +207,7 @@ def submit():
     now = int(datetime.now(timezone.utc).timestamp())
     global_start = team_doc.get("global_timer_start", now)
     if now >= global_start + GLOBAL_TIMER_DURATION:
-        return redirect(url_for('time_up'))
+        return redirect(url_for('gamefinished', status='timeup'))
 
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
@@ -310,20 +314,18 @@ def submit():
 
     # Next step or toast
     if completed:
-        ## COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
+        # COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
 
-        # if current_idx + 1 < len(team_doc["quest_order"]):
-        #     mongo.db.teams.update_one(
-        #         {"_id": team_doc["_id"]},
-        #         {"$set": {"current_quest_idx": current_idx + 1}}
-        #     )
-        #     return redirect(url_for('treasurehunt', status="success"))
-        # else:
-        #     return "🎉 All quests completed!"
-        pass
+        if current_idx + 1 < len(team_doc["quest_order"]):
+            mongo.db.teams.update_one(
+                {"_id": team_doc["_id"]},
+                {"$set": {"current_quest_idx": current_idx + 1}}
+            )
+            return redirect(url_for('treasurehunt', status="success"))
+        else:
+            return redirect(url_for('gamefinished'))
     else:
         return redirect(url_for('treasurehunt', status="wrong"))
-    return redirect(url_for('treasurehunt', status="success"))
 
 
 # -------------------------
@@ -342,7 +344,7 @@ def skip():
     now = int(datetime.now(timezone.utc).timestamp())
     global_start = team_doc.get("global_timer_start", now)
     if now >= global_start + GLOBAL_TIMER_DURATION:
-        return redirect(url_for('time_up'))
+        return redirect(url_for('gamefinished', status='timeup'))
 
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
@@ -355,17 +357,91 @@ def skip():
         }}
     )
 
-    ## COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
+    # COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
 
-    # if current_idx + 1 < len(team_doc["quest_order"]):
-    #     mongo.db.teams.update_one(
-    #         {"_id": team_doc["_id"]},
-    #         {"$set": {"current_quest_idx": current_idx + 1}}
-    #     )
-    #     return redirect(url_for('treasurehunt', status="skip"))
-    # else:
-    #     return "🎉 All quests completed!"
-    return redirect(url_for('treasurehunt', status="skip"))
+    if current_idx + 1 < len(team_doc["quest_order"]):
+        mongo.db.teams.update_one(
+            {"_id": team_doc["_id"]},
+            {"$set": {"current_quest_idx": current_idx + 1}}
+        )
+        return redirect(url_for('treasurehunt', status="skip"))
+    else:
+        return redirect(url_for('gamefinished', status="skip"))
+
+
+# -------------------------
+# GAME FINISHED (scoring + banner)
+# -------------------------
+@app.route("/gamefinished", endpoint="gamefinished")
+def game_finished():
+    team_name = session.get("team_name") or request.args.get("team")
+    if not team_name:
+        abort(400, description="Missing team. Pass ?team=team_name or set it in session.")
+
+    status = request.args.get("status")  # <-- read the end reason from querystring
+
+    team = mongo.db.teams.find_one({"team_name": team_name})
+    if not team:
+        abort(404, description="Team not found")
+
+    quest_order = team.get("quest_order", [])
+    progress_map = team.get("quest_progress", {})
+
+    solved_no_hint = 0
+    solved_with_hint = 0
+    skipped_count = 0
+    total_points = 0
+    rows = []
+
+    for idx, qid in enumerate(quest_order, start=1):
+        quest = mongo.db.quests.find_one({"_id": ObjectId(qid)})
+        quest_number = quest.get("quest_number", idx) if quest else idx
+
+        pg = progress_map.get(qid, {}) or {}
+        skipped = bool(pg.get("skipped", False))
+        completed = bool(pg.get("completed", False))
+        used_hint = bool(
+            pg.get("used_hint") or
+            pg.get("hint_used") or
+            pg.get("hint_shown") or
+            (pg.get("hint_revealed_at") is not None)
+        )
+
+        if skipped:
+            status_text = "Skipped"
+            points = 0
+            skipped_count += 1
+        elif completed:
+            if used_hint:
+                status_text = "Solved (with hint)"
+                points = 3
+                solved_with_hint += 1
+            else:
+                status_text = "Solved (no hint)"
+                points = 5
+                solved_no_hint += 1
+        else:
+            status_text = "In progress"
+            points = 0
+
+        total_points += points
+        rows.append({
+            "quest_number": quest_number,
+            "status": status_text,
+            "used_hint": used_hint,
+            "points": points
+        })
+
+    totals = {
+        "team_name": team_name,
+        "solved_no_hint": solved_no_hint,
+        "solved_with_hint": solved_with_hint,
+        "skipped": skipped_count,
+        "correct": solved_no_hint + solved_with_hint,
+        "points": total_points
+    }
+
+    return render_template("gamefinished.html", totals=totals, rows=rows, end_reason=status)
 
 
 # -------------------------

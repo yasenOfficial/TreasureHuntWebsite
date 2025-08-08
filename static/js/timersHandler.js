@@ -14,22 +14,21 @@ window.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    if (status === "success") {
-      toastEl.classList.remove("text-bg-danger");
-            toastEl.classList.remove("text-bg-warning");
+    // Reset classes we might add
+    toastEl.classList.remove("text-bg-success", "text-bg-warning", "text-bg-danger");
 
+    if (status === "success") {
       toastEl.classList.add("text-bg-success");
       toastBody.textContent = "✅ Quest submitted successfully!";
     } else if (status === "skip") {
-      toastEl.classList.remove("text-bg-success");
-    toastEl.classList.remove("text-bg-danger");
       toastEl.classList.add("text-bg-warning");
-      toastBody.textContent = "⏩ Quest Skipped"
+      toastBody.textContent = "⏩ Quest Skipped";
     } else if (status === "wrong") {
-      toastEl.classList.remove("text-bg-success");
-    toastEl.classList.remove("text-bg-warning");
       toastEl.classList.add("text-bg-danger");
       toastBody.textContent = "❌ Wrong answer. Try again!";
+    } else if (status === "timeup") {
+      toastEl.classList.add("text-bg-danger");
+      toastBody.textContent = "⏰ TIME IS UP";
     } else {
       toastBody.textContent = status;
     }
@@ -51,9 +50,26 @@ window.addEventListener('DOMContentLoaded', function () {
   }
 
   fetch('/api/timers')
-    .then(res => res.json())
+    .then(res => {
+      // If server says "forbidden" and sends redirect, read it as JSON anyway
+      if (res.status === 403 || res.status === 401) {
+        return res.json().then(data => {
+          if (data && data.redirect) {
+            window.location.assign(data.redirect);
+            return Promise.reject('Redirecting to gamefinished...');
+          }
+          return Promise.reject(data && data.error ? data.error : 'Unauthorized/Forbidden');
+        });
+      }
+      return res.json();
+    })
     .then(data => {
       if (data.error) {
+        // If backend provided redirect, follow it
+        if (data.redirect) {
+          window.location.assign(data.redirect);
+          return;
+        }
         const gt = document.getElementById('global-timer');
         if (gt) {
           gt.textContent = "⛔ " + data.error;
@@ -74,6 +90,17 @@ window.addEventListener('DOMContentLoaded', function () {
       const hintContent = document.getElementById('hint-content');
       const globalTimerElem = document.getElementById('global-timer');
 
+      // Helper to disable all inputs when time is up
+      function lockForm() {
+        if (submitBtn) submitBtn.disabled = true;
+        const inputs = document.querySelectorAll('input, button, select, textarea');
+        inputs.forEach(el => {
+          if (!el.closest('.toast')) {
+            el.disabled = true;
+          }
+        });
+      }
+
       // --- Global Timer ---
       function updateGlobalTimer() {
         if (!globalTimerElem) return;
@@ -84,8 +111,11 @@ window.addEventListener('DOMContentLoaded', function () {
         globalTimerElem.textContent = `⏰ Time Remaining: ${formatTimeLeft(remaining)}`;
 
         if (remaining <= 0) {
+          // Hard stop on client too (in case API isn't polled again)
           globalTimerElem.textContent = "⏰ Time's up!";
-          if (submitBtn) submitBtn.disabled = true;
+          lockForm();
+          // Send to unified finish page
+          window.location.assign('/gamefinished?status=timeup');
           clearInterval(globalInterval);
         }
       }
@@ -159,6 +189,8 @@ window.addEventListener('DOMContentLoaded', function () {
       }
     })
     .catch(err => {
+      // Silent if we intentionally redirected
+      if (typeof err === 'string' && err.includes('Redirecting to gamefinished')) return;
       console.error("Failed to load timers:", err);
       const globalTimerElem = document.getElementById('global-timer');
       if (globalTimerElem) {
