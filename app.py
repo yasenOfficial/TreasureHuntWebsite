@@ -310,16 +310,20 @@ def submit():
 
     # Next step or toast
     if completed:
-        if current_idx + 1 < len(team_doc["quest_order"]):
-            mongo.db.teams.update_one(
-                {"_id": team_doc["_id"]},
-                {"$set": {"current_quest_idx": current_idx + 1}}
-            )
-            return redirect(url_for('treasurehunt', status="success"))
-        else:
-            return "🎉 All quests completed!"
+        ## COMENTED OUT ONLY FOR DEBBUING
+
+        # if current_idx + 1 < len(team_doc["quest_order"]):
+        #     mongo.db.teams.update_one(
+        #         {"_id": team_doc["_id"]},
+        #         {"$set": {"current_quest_idx": current_idx + 1}}
+        #     )
+        #     return redirect(url_for('treasurehunt', status="success"))
+        # else:
+        #     return "🎉 All quests completed!"
+        pass
     else:
         return redirect(url_for('treasurehunt', status="wrong"))
+    return redirect(url_for('treasurehunt', status="success"))
 
 
 # -------------------------
@@ -351,14 +355,17 @@ def skip():
         }}
     )
 
-    if current_idx + 1 < len(team_doc["quest_order"]):
-        mongo.db.teams.update_one(
-            {"_id": team_doc["_id"]},
-            {"$set": {"current_quest_idx": current_idx + 1}}
-        )
-        return redirect(url_for('treasurehunt', status="skip"))
-    else:
-        return "🎉 All quests completed!"
+    ## COMENTED OUT ONLY FOR DEBBUING
+
+    # if current_idx + 1 < len(team_doc["quest_order"]):
+    #     mongo.db.teams.update_one(
+    #         {"_id": team_doc["_id"]},
+    #         {"$set": {"current_quest_idx": current_idx + 1}}
+    #     )
+    #     return redirect(url_for('treasurehunt', status="skip"))
+    # else:
+    #     return "🎉 All quests completed!"
+    return redirect(url_for('treasurehunt', status="skip"))
 
 
 # -------------------------
