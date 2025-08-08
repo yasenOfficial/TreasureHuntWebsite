@@ -144,12 +144,12 @@ img {
 
 /* Grid Wrapper */
 .grid-wrapper {
-  background: rgba(74, 50, 32, 0.6);
-  padding: 1.5rem;
-  border-radius: 10px;
-  border: 2px solid var(--accent-copper);
-  box-shadow: 0 4px 15px var(--shadow);
-  margin: 1.5rem 0;
+  /* background: rgba(74, 50, 32, 0.6); */
+  /* padding: 1.5rem; */
+  /* border-radius: 10px; */
+  /* border: 2px solid var(--accent-copper); */
+  /* box-shadow: 0 4px 15px var(--shadow); */
+  /* margin: 1.5rem 0; */
   text-align: center;
 }
 .grid-wrapper label {

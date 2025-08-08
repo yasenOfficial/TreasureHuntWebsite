@@ -13,6 +13,18 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 </head>
 <body>
+  
+  <div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="status-toast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="status-toast-message">
+          <!-- Toast message will be inserted here -->
+        </div>
+        <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
   <div class="container" style="max-width: 720px; margin: 0 auto; padding: 16px; mt-3">
     <h2>Quest {{ quest.quest_number }}</h2>
 
@@ -47,6 +59,7 @@
                   maxlength="1"
                   inputmode="numeric"
                   pattern="[0-9]*"
+                  required
                   style="width:40px;height:40px;text-align:center;font-size:18px;"
                 />
               {% endfor %}
@@ -58,14 +71,14 @@
       {% if quest.correct_answers and quest.correct_answers.strip() %}
         <div class="mb-3">
           <label for="answer" class="form-label">Your Answer:</label>
-          <input type="text" id="answer" name="answer" />
+          <input type="text" id="answer" name="answer" required />
         </div>
       {% endif %}
 
       {% if quest.file_required %}
         <div class="mb-3">
           <label for="uploaded_file" class="form-label">Upload File:</label>
-          <input type="file" id="uploaded_file" name="uploaded_file" />
+          <input type="file" id="uploaded_file" name="uploaded_file" required />
         </div>
       {% endif %}
 
@@ -74,32 +87,21 @@
       </div>
     </form>
 
-<!-- Separate Skip form moved BELOW hint -->
-{% if quest.hint %}
-  <div style="margin-top: 12px;">
-    <button id="hint-btn" type="button">Show Hint</button>
-  </div>
-  <div id="hint-content" style="display:none; margin-top:6px;">
-    <p>{{ quest.hint }}</p>
-  </div>
-{% endif %}
-
-<!-- Skip button now below hint -->
-<form action="/skip" method="post" style="display:block; margin-top: 16px; text-align:center;">
-  <button id="skip-btn" type="submit">Skip</button>
-</form>
-
-
-<div class="toast-container position-fixed top-0 end-0 p-3">
-  <div id="status-toast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-    <div class="d-flex">
-      <div class="toast-body" id="status-toast-message">
-        <!-- Toast message will be inserted here -->
+    <!-- Separate Skip form moved BELOW hint -->
+    {% if quest.hint %}
+      <div style="margin-top: 12px;">
+        <button id="hint-btn" type="button">Show Hint</button>
       </div>
-      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
+      <div id="hint-content" style="display:none; margin-top:6px;">
+        <p>{{ quest.hint }}</p>
+      </div>
+    {% endif %}
+
+    <!-- Skip button now below hint -->
+    <form action="/skip" method="post" style="display:block; margin-top: 16px; text-align:center;">
+      <button id="skip-btn" type="submit">Skip</button>
+    </form>
   </div>
-</div>
 
   <!-- (Optional) Bootstrap JS for toasts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

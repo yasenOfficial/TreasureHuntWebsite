@@ -310,7 +310,7 @@ def submit():
 
     # Next step or toast
     if completed:
-        ## COMENTED OUT ONLY FOR DEBBUING
+        ## COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
 
         # if current_idx + 1 < len(team_doc["quest_order"]):
         #     mongo.db.teams.update_one(
@@ -355,7 +355,7 @@ def skip():
         }}
     )
 
-    ## COMENTED OUT ONLY FOR DEBBUING
+    ## COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
 
     # if current_idx + 1 < len(team_doc["quest_order"]):
     #     mongo.db.teams.update_one(
