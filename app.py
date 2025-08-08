@@ -100,14 +100,13 @@ def treasurehunt():
     if now >= global_start + GLOBAL_TIMER_DURATION:
         return redirect(url_for('time_up'))
 
-    # Get current quest ID
+    # Current quest
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
 
-    # Current progress for this quest
+    # Progress for this quest
     progress = team_doc.get("quest_progress", {}).get(quest_id, {})
-    # Start timers if not set
     if "quest_timer_start" not in progress:
         progress["quest_timer_start"] = now
     if "hint_timer_start" not in progress:
@@ -137,7 +136,7 @@ def treasurehunt():
 
 
 # -------------------------
-# API: TIMERS
+# API: TIMERS (for JS)
 # -------------------------
 @app.route('/api/timers')
 def api_timers():
@@ -151,7 +150,7 @@ def api_timers():
 
     now = int(datetime.now(timezone.utc).timestamp())
 
-    # --- Check global timer expiration ---
+    # Global timer
     global_start = team_doc.get("global_timer_start")
     if global_start is None:
         global_start = now
@@ -162,6 +161,7 @@ def api_timers():
     if now >= global_start + GLOBAL_TIMER_DURATION:
         return jsonify({"error": "Time's up"}), 403
 
+    # Current quest
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
@@ -188,7 +188,7 @@ def api_timers():
 
 
 # -------------------------
-# SUBMIT ANSWER (now supports grid cipher)
+# SUBMIT (supports grid cipher)
 # -------------------------
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -201,8 +201,6 @@ def submit():
         return redirect(url_for('logout'))
 
     now = int(datetime.now(timezone.utc).timestamp())
-
-    # --- Block submissions if global timer expired ---
     global_start = team_doc.get("global_timer_start", now)
     if now >= global_start + GLOBAL_TIMER_DURATION:
         return redirect(url_for('time_up'))
@@ -212,78 +210,116 @@ def submit():
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
 
     # Answers
-    answer = request.form.get('answer', '').strip().lower()
-    grid_cipher = request.form.get('grid_cipher', '').strip().lower()  # <- NEW
-    correct_answers = [a.strip().lower() for a in quest.get("correct_answers", "").split("|") if a.strip()]
+    answer = (request.form.get('answer') or '').strip().lower()
+    grid_cipher_raw = (request.form.get('grid_cipher') or '').strip()
 
-    # --- Handle file upload ---
+    # Simple text answers list
+    correct_answers = [a.strip().lower()
+                       for a in (quest.get("correct_answers", "") or "").split("|")
+                       if a.strip()]
+
+    # File upload
     uploaded_file = request.files.get("uploaded_file")
     file_uploaded = False
     if uploaded_file and uploaded_file.filename.strip():
         safe_name = secure_filename(uploaded_file.filename)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        # Extract team number (team1 -> 1)
         team_number = ''.join(filter(str.isdigit, team_name)) or "unknown"
-
-        # Create output folder
         save_dir = pathlib.Path("output") / f"team_{team_number}"
         save_dir.mkdir(parents=True, exist_ok=True)
-
-        # Full file path
         file_path = save_dir / f"{timestamp}_{safe_name}"
-
         uploaded_file.save(file_path)
-        print(f"[UPLOAD] Saved file for {team_name} to {file_path}")
-
         file_uploaded = True
 
-        # Save file info in DB
         mongo.db.teams.update_one(
             {"_id": team_doc["_id"]},
             {"$push": {f"quest_progress.{quest_id}.uploaded_files": str(file_path)}}
         )
 
-    # --- Determine completion logic ---
-    completed = False
-    has_grid = bool(quest.get("grid"))  # if a grid like "3x3" is defined
+    # Grid helpers
+    def only_digits(s: str) -> str:
+        return ''.join(ch for ch in s if ch.isdigit())
 
-    # Priority: if grid is present, use grid_cipher against correct_answers
+    # Determine if quest has a grid like "4x4"
+    has_grid = bool(quest.get("grid"))
+    grid_matrix = None
+    grid_ok = False
+
     if has_grid:
-        if grid_cipher and (not correct_answers or grid_cipher in correct_answers):
-            completed = True
-    else:
-        # Non-grid: either a normal text answer (if expected), or file-only flow
-        if correct_answers:
-            if answer and answer in correct_answers:
-                completed = True
-        else:
-            # If no answer required, complete if file is required and uploaded
-            if quest.get("file_required") and file_uploaded:
-                completed = True
+        # normalize incoming cipher (should already be digits from gridBuilder)
+        gc = only_digits(grid_cipher_raw)
+        # Parse grid dims
+        try:
+            rows, cols = map(int, str(quest["grid"]).lower().split("x"))
+        except Exception:
+            rows, cols = 0, 0
 
-    # Save progress info
+        # If we got the right length, convert to matrix and check
+        if rows > 0 and cols > 0 and len(gc) == rows * cols:
+            # Save in DB as 2D array
+            grid_matrix = [
+                [int(gc[r * cols + c]) for c in range(cols)]
+                for r in range(rows)
+            ]
+
+            # Build expected string row-major
+            expected = None
+            if quest.get("grid_answer"):
+                expected = only_digits(str(quest["grid_answer"]))
+            elif quest.get("grid_values"):
+                try:
+                    flat = ''.join(''.join(str(x) for x in row) for row in quest["grid_values"])
+                    expected = only_digits(flat)
+                except Exception:
+                    expected = None
+            # if there's also correct_answers, allow matching there too
+            candidates = [expected] if expected else []
+            candidates += correct_answers
+
+            if candidates:
+                grid_ok = gc in candidates
+            else:
+                # If no explicit answers are defined, accept any full grid submission
+                grid_ok = True
+
+    # Completion rules
+    completed = False
+    if has_grid:
+        completed = grid_ok
+    else:
+        if correct_answers:
+            completed = bool(answer) and (answer in correct_answers)
+        else:
+            # no answer required → complete when file is required & uploaded
+            if quest.get("file_required"):
+                completed = file_uploaded
+
+    # Persist progress
+    update_doc = {
+        f"quest_progress.{quest_id}.submitted_answer": answer,
+        f"quest_progress.{quest_id}.completed": completed
+    }
+    # store grid_matrix (2D)
+    if has_grid:
+        update_doc[f"quest_progress.{quest_id}.grid_matrix"] = grid_matrix
+
     mongo.db.teams.update_one(
         {"_id": team_doc["_id"]},
-        {"$set": {
-            f"quest_progress.{quest_id}.submitted_answer": answer,
-            f"quest_progress.{quest_id}.grid_cipher": grid_cipher if has_grid else None,
-            f"quest_progress.{quest_id}.completed": completed
-        }}
+        {"$set": update_doc}
     )
 
-    # If completed, go to next quest
+    # Next step or toast
     if completed:
         if current_idx + 1 < len(team_doc["quest_order"]):
             mongo.db.teams.update_one(
                 {"_id": team_doc["_id"]},
                 {"$set": {"current_quest_idx": current_idx + 1}}
             )
-            return redirect(url_for('treasurehunt'))
+            return redirect(url_for('treasurehunt', status="success"))
         else:
             return "🎉 All quests completed!"
-
-    return redirect(url_for('treasurehunt'))
+    else:
+        return redirect(url_for('treasurehunt', status="wrong"))
 
 
 # -------------------------
@@ -291,7 +327,6 @@ def submit():
 # -------------------------
 @app.route('/skip', methods=['POST'])
 def skip():
-    """Mark current quest as skipped and move to the next one."""
     team_name = session.get('team_name')
     if not team_name:
         return redirect(url_for('login'))
@@ -308,7 +343,6 @@ def skip():
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
 
-    # Mark skipped + completed for stats/consistency
     mongo.db.teams.update_one(
         {"_id": team_doc["_id"]},
         {"$set": {
@@ -317,13 +351,12 @@ def skip():
         }}
     )
 
-    # Move to next quest if any
     if current_idx + 1 < len(team_doc["quest_order"]):
         mongo.db.teams.update_one(
             {"_id": team_doc["_id"]},
             {"$set": {"current_quest_idx": current_idx + 1}}
         )
-        return redirect(url_for('treasurehunt'))
+        return redirect(url_for('treasurehunt', status="skip"))
     else:
         return "🎉 All quests completed!"
 

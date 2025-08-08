@@ -1,47 +1,38 @@
+// static/js/gridBuilder.js
+// Collect grid digits row-by-row into #grid_cipher before form submit.
+// Also save them as digits only and auto-advance focus.
 
-    (function() {
-      const form = document.getElementById('answer-form');
-      if (!form) return;
+window.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('answer-form');
+  const gridContainer = document.getElementById('grid-container');
+  const gridCipherInput = document.getElementById('grid_cipher');
 
-      const gridContainer = document.getElementById('grid-container');
-      const hiddenCipher = document.getElementById('grid_cipher');
+  if (!form || !gridContainer || !gridCipherInput) return;
 
-      // Only apply if there's a grid on the page
-      if (gridContainer && hiddenCipher) {
-        // Force uppercase letters/digits only (optional UI nicety)
-        gridContainer.addEventListener('input', function(e) {
-          const el = e.target;
-          if (el.classList.contains('grid-cell')) {
-            el.value = el.value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 1);
-          }
-        });
+  const cells = Array.from(gridContainer.querySelectorAll('.grid-cell'));
 
-        form.addEventListener('submit', function() {
-          const cells = Array.from(gridContainer.querySelectorAll('.grid-cell'));
-          // Sort by row-major
-          cells.sort((a, b) => {
-            const ar = parseInt(a.dataset.r, 10), ac = parseInt(a.dataset.c, 10);
-            const br = parseInt(b.dataset.r, 10), bc = parseInt(b.dataset.c, 10);
-            if (ar === br) return ac - bc;
-            return ar - br;
-          });
-
-          // Join into one string
-          const cipher = cells.map(el => (el.value || '')).join('').trim().toLowerCase();
-          hiddenCipher.value = cipher;
-        });
+  // Keep only 0-9 and auto-advance
+  cells.forEach((cell, idx) => {
+    cell.addEventListener('input', () => {
+      cell.value = cell.value.replace(/[^0-9]/g, '');
+      if (cell.value.length === 1) {
+        // move focus to next cell
+        const next = cells[idx + 1];
+        if (next) next.focus();
       }
+    });
 
-      // Hint toggle
-      // Hint toggle
-      const hintBtn = document.getElementById('hint-btn');
-      const hintContent = document.getElementById('hint-content');
-
-      if (hintBtn && hintContent) {
-        hintBtn.addEventListener('click', () => {
-          const isHidden = hintContent.style.display === 'none' || hintContent.style.display === '';
-          hintContent.style.display = isHidden ? 'block' : 'none';
-          hintBtn.textContent = isHidden ? 'Hide Hint' : 'Show Hint';
-        });
+    cell.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !cell.value && idx > 0) {
+        const prev = cells[idx - 1];
+        if (prev) prev.focus();
       }
-    })();
+    });
+  });
+
+  form.addEventListener('submit', function () {
+    // Build row-major string
+    const digits = cells.map(c => (c.value || '').replace(/[^0-9]/g, '')).join('');
+    gridCipherInput.value = digits;
+  });
+});
