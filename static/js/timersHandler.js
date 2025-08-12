@@ -65,15 +65,12 @@ window.addEventListener('DOMContentLoaded', function () {
     })
     .then(data => {
       if (data.error) {
-        // If backend provided redirect, follow it
         if (data.redirect) {
           window.location.assign(data.redirect);
           return;
         }
         const gt = document.getElementById('global-timer');
-        if (gt) {
-          gt.textContent = "⛔ " + data.error;
-        }
+        if (gt) gt.textContent = "⛔ " + data.error;
         return;
       }
 
@@ -86,6 +83,7 @@ window.addEventListener('DOMContentLoaded', function () {
       const overallDuration = data.globalTimerDuration;
 
       const submitBtn = document.getElementById('submit-btn');
+      const skipBtn = document.getElementById('skip-btn');      // <— ADDED
       const hintBtn = document.getElementById('hint-btn');
       const hintContent = document.getElementById('hint-content');
       const globalTimerElem = document.getElementById('global-timer');
@@ -95,9 +93,7 @@ window.addEventListener('DOMContentLoaded', function () {
         if (submitBtn) submitBtn.disabled = true;
         const inputs = document.querySelectorAll('input, button, select, textarea');
         inputs.forEach(el => {
-          if (!el.closest('.toast')) {
-            el.disabled = true;
-          }
+          if (!el.closest('.toast')) el.disabled = true;
         });
       }
 
@@ -111,10 +107,8 @@ window.addEventListener('DOMContentLoaded', function () {
         globalTimerElem.textContent = `⏰ Time Remaining: ${formatTimeLeft(remaining)}`;
 
         if (remaining <= 0) {
-          // Hard stop on client too (in case API isn't polled again)
           globalTimerElem.textContent = "⏰ Time's up!";
           lockForm();
-          // Send to unified finish page
           window.location.assign('/gamefinished?status=timeup');
           clearInterval(globalInterval);
         }
@@ -122,7 +116,7 @@ window.addEventListener('DOMContentLoaded', function () {
       updateGlobalTimer();
       const globalInterval = setInterval(updateGlobalTimer, 1000);
 
-      // --- Quest Timer (submit disabled while waiting) ---
+      // --- Quest Timer (submit + skip disabled while waiting) ---
       function updateQuestTimer() {
         const now = Math.floor(Date.now() / 1000);
         const questEnd = questTimerStart + questTimerDuration;
@@ -133,10 +127,18 @@ window.addEventListener('DOMContentLoaded', function () {
             submitBtn.disabled = true;
             submitBtn.textContent = `⏳ Submit in ${remaining}s`;
           }
+          if (skipBtn) {
+            skipBtn.disabled = true;                       // <— ADDED
+            skipBtn.textContent = `⏳ Skip in ${remaining}s`; // <— ADDED
+          }
         } else {
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = "Submit";
+          }
+          if (skipBtn) {                                   // <— ADDED
+            skipBtn.disabled = false;
+            skipBtn.textContent = "Skip";
           }
           clearInterval(questInterval);
         }
@@ -160,7 +162,6 @@ window.addEventListener('DOMContentLoaded', function () {
         } else {
           if (hintBtn) {
             hintBtn.disabled = false;
-            // keep current label if content is visible
             if (hintContent && hintContent.style.display === "block") {
               hintBtn.textContent = "Hide Hint";
             } else {
@@ -189,12 +190,9 @@ window.addEventListener('DOMContentLoaded', function () {
       }
     })
     .catch(err => {
-      // Silent if we intentionally redirected
       if (typeof err === 'string' && err.includes('Redirecting to gamefinished')) return;
       console.error("Failed to load timers:", err);
       const globalTimerElem = document.getElementById('global-timer');
-      if (globalTimerElem) {
-        globalTimerElem.textContent = "❌ Timer loading failed";
-      }
+      if (globalTimerElem) globalTimerElem.textContent = "❌ Timer loading failed";
     });
 });

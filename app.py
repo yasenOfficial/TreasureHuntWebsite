@@ -105,6 +105,22 @@ def treasurehunt():
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+    
+    phase_answers = []
+    if quest.get("list_phase_answers") is not None:
+        target_phase = quest["list_phase_answers"]
+        phase_quests = mongo.db.quests.find({"phase": target_phase})
+        for pq in phase_quests:
+            ans = pq.get("correct_answers", "")
+            if ans:
+                first_answer = ans.split("|")[0].strip()
+                if first_answer:
+                    phase_answers.append(first_answer)
+
+    # Remove duplicates while preserving order
+    phase_answers = list(dict.fromkeys(phase_answers))
+
+
 
     # Progress for this quest
     progress = team_doc.get("quest_progress", {}).get(quest_id, {})
@@ -132,8 +148,10 @@ def treasurehunt():
         hint_timer_duration=hint_timer_duration,
         hint_timer_start=hint_timer_start,
         global_timer_duration=GLOBAL_TIMER_DURATION,
-        global_timer_start=global_start
+        global_timer_start=global_start,
+        phase_answers=phase_answers   # <-- new
     )
+
 
 
 # -------------------------

@@ -385,7 +385,7 @@ input[type="file"]:focus {
 #skip-btn {
   background: linear-gradient(145deg, #8b0000, #4b0000) !important; /* deep crimson to very dark red */
   color: var(--text-light) !important;
-  border: 2px solid var(--error) !important; /* uses --error (#8b0000) */
+  border: none; /* uses --error (#8b0000) */
   font-weight: 700 !important;
   width: 100%;
   padding: 0.8rem 1.5rem !important;
@@ -440,3 +440,133 @@ div[style*="display:flex"] {
   border: 0 !important;
   border-radius: .375rem !important;
 }
+
+/* ===== SCOREBOARD ===== */
+.scoreboard .card {
+  background: radial-gradient(120% 140% at 50% -20%, rgba(212,175,55,.18), transparent 60%),
+              linear-gradient(145deg, rgba(74,50,32,.9), rgba(61,40,23,.95));
+  border: 2px solid rgba(212,175,55,.35);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+  overflow: hidden;
+  position: relative;
+}
+.scoreboard .card::after{
+  /* subtle top highlight */
+  content:'';
+  position:absolute; inset:0 0 auto 0; height:4px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,.5), transparent);
+  opacity:.6;
+}
+.scoreboard .card .card-body { padding: 1.25rem 1rem; }
+.scoreboard .title {
+  font-family: 'Cinzel Decorative', serif;
+  letter-spacing:.5px;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  font-size: .95rem;
+  opacity:.9;
+}
+.scoreboard .kpi {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  line-height: 1;
+  margin-top:.1rem;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  color: var(--text-light);
+  text-shadow: 0 0 12px rgba(212,175,55,.25);
+}
+/* Bright light color for multiplier text */
+.scoreboard .mult {
+  font-size: .85rem;
+  color: #fff8dc; /* light cream */
+  text-shadow: 0 0 6px rgba(255, 255, 224, 0.8), 0 0 12px rgba(255, 255, 224, 0.6);
+  font-weight: 600;
+}
+
+.scoreboard .kpi.success { color:#7CDE7C; }
+.scoreboard .kpi.warn    { color:#F7D37A; }
+.scoreboard .kpi.danger  { color:#FF8A8A; }
+
+/* ===== RESULTS TABLE ===== */
+.table.th-table {
+  --row-hover: rgba(212,175,55,.08);
+  --row-sep:   rgba(212,175,55,.18);
+  background: linear-gradient(160deg, rgba(74,50,32,.9), rgba(61,40,23,.95));
+  border: 2px solid rgba(212,175,55,.35);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.table.th-table thead th {
+  background: linear-gradient(180deg, rgba(212,175,55,.15), rgba(212,175,55,.04));
+  border-bottom: 2px solid var(--accent-gold) !important;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.table.th-table tbody tr + tr td { border-top: 1px dashed var(--row-sep); }
+.table.th-table tbody tr:hover { background-color: var(--row-hover); }
+
+/* Column sizing helpers */
+.th-col-quest  { width: 110px; }
+.th-col-points { width: 120px; }
+
+/* Hint badge */
+.badge-hint {
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.35rem .6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing:.2px;
+  border:1px solid rgba(255,255,255,.15);
+  background: rgba(0,0,0,.25);
+}
+.badge-hint.ok   { color:#82e082; border-color: rgba(130,224,130,.35); }
+.badge-hint.no   { color:#ff8a8a; border-color: rgba(255,138,138,.35); }
+
+/* Status badge */
+.badge-status {
+  font-family:'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing:.6px;
+  padding:.35rem .6rem;
+  border-radius: 999px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+}
+.badge-status.solved-no   { color:#7CDE7C;  border-color: rgba(124,222,124,.35); }
+.badge-status.solved-hint { color:#F7D37A;  border-color: rgba(247,211,122,.35); }
+.badge-status.skipped     { color:#FF8A8A;  border-color: rgba(255,138,138,.35); }
+
+/* Footer row emphasis */
+.table.th-table tfoot th {
+  border-top: 2px solid var(--accent-gold) !important;
+  background: linear-gradient(180deg, rgba(212,175,55,.05), transparent);
+  color: var(--accent-gold);
+}
+
+/* “Play again” button variant to match theme */
+.btn-th-outline {
+  background: transparent !important;
+  border: 2px solid var(--accent-gold) !important;
+  color: var(--accent-gold) !important;
+}
+.btn-th-outline:hover {
+  background: linear-gradient(145deg, rgba(212,175,55,.18), rgba(184,115,51,.18)) !important;
+  color: var(--text-light) !important;
+  transform: translateY(-2px);
+}
+
+/* TIME IS UP alert to match skip button theme */
+.alert-timeup {
+  background: linear-gradient(145deg, #8b0000, #4b0000) !important; /* deep crimson to dark red */
+  border: none;
+  color: var(--text-light) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Cinzel', serif;
+  box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4);
+}
+
+

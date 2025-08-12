@@ -17,72 +17,93 @@
     <h2>🏁 Game Finished — {{ totals.team_name }}</h2>
 
     {% if end_reason == 'timeup' %}
-    <div class="alert alert-danger text-center fw-bold" role="alert" style="letter-spacing:.5px;">
-        ⏰ TIME IS UP
-    </div>
-    {% endif %}
+<div class="alert alert-timeup text-center fw-bold" role="alert">
+    ⏰ TIME IS UP
+</div>
+{% endif %}
 
 
-    <div class="row g-3 mb-4">
+    <!-- SCOREBOARD -->
+    <div class="row g-3 mb-4 scoreboard">
       <div class="col-12 col-md-3">
         <div class="card text-center">
           <div class="card-body">
-            <div class="h5 mb-1">Total Points</div>
-            <div class="display-6">{{ totals.points }}</div>
+            <div class="title">Total Points</div>
+            <div class="kpi">{{ totals.points }}</div>
           </div>
         </div>
       </div>
+
       <div class="col-6 col-md-3">
         <div class="card text-center">
           <div class="card-body">
-            <div class="h6 mb-1">Solved (no hint)</div>
-            <div class="h3 text-success">{{ totals.solved_no_hint }}</div>
-            <div class="small">×5 pts</div>
+            <div class="title">Solved (no hint)</div>
+            <div class="kpi success">{{ totals.solved_no_hint }}</div>
+            <div class="mult">×5 pts</div>
           </div>
         </div>
       </div>
+
       <div class="col-6 col-md-3">
         <div class="card text-center">
           <div class="card-body">
-            <div class="h6 mb-1">Solved (with hint)</div>
-            <div class="h3 text-warning">{{ totals.solved_with_hint }}</div>
-            <div class="small">×3 pts</div>
+            <div class="title">Solved (with hint)</div>
+            <div class="kpi warn">{{ totals.solved_with_hint }}</div>
+            <div class="mult">×3 pts</div>
           </div>
         </div>
       </div>
+
       <div class="col-12 col-md-3">
         <div class="card text-center">
           <div class="card-body">
-            <div class="h6 mb-1">Skipped</div>
-            <div class="h3 text-danger">{{ totals.skipped }}</div>
-            <div class="small">0 pts</div>
+            <div class="title">Skipped</div>
+            <div class="kpi danger">{{ totals.skipped }}</div>
+            <div class="mult">0 pts</div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- RESULTS TABLE -->
     <div class="table-responsive">
-      <table class="table table-dark table-striped align-middle">
+      <table class="table table-dark table-striped align-middle th-table">
         <thead>
           <tr>
-            <th style="width: 100px;">Quest #</th>
+            <th class="th-col-quest">Quest #</th>
             <th>Status</th>
             <th class="text-center">Hint Used</th>
-            <th class="text-end" style="width: 120px;">Points</th>
+            <th class="text-end th-col-points">Points</th>
           </tr>
         </thead>
         <tbody>
           {% for row in rows %}
           <tr>
             <td><strong>{{ row.quest_number }}</strong></td>
-            <td>{{ row.status }}</td>
-            <td class="text-center">
-              {% if row.used_hint %}
-                ✅
+
+            <!-- Status badge with styling -->
+            <td>
+              {% set status_lower = row.status|lower %}
+              {% if 'no hint' in status_lower %}
+                <span class="badge-status solved-no">{{ row.status }}</span>
+              {% elif 'with hint' in status_lower %}
+                <span class="badge-status solved-hint">{{ row.status }}</span>
+              {% elif 'skipped' in status_lower %}
+                <span class="badge-status skipped">Skipped</span>
               {% else %}
-                ❌
+                <span class="badge-status">{{ row.status }}</span>
               {% endif %}
             </td>
+
+            <!-- Hint badge -->
+            <td class="text-center">
+              {% if row.used_hint %}
+                <span class="badge-hint ok">✔ Hint</span>
+              {% else %}
+                <span class="badge-hint no">✖ No Hint</span>
+              {% endif %}
+            </td>
+
             <td class="text-end">{{ row.points }}</td>
           </tr>
           {% endfor %}
@@ -96,10 +117,9 @@
       </table>
     </div>
 
-    <div class="d-flex justify-content-center gap-2 mt-3">
-      <!-- <a href="/" class="btn btn-outline-light">Back to Home</a> -->
-    <a href="{{ url_for('treasurehunt') }}" class="btn btn-outline-warning">Play Again</a>
-    </div>
+    <!-- <div class="d-flex justify-content-center gap-2 mt-3">
+      <a href="{{ url_for('treasurehunt') }}" class="btn btn-th-outline">Play Again</a>
+    </div> -->
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
