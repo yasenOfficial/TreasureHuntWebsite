@@ -16,7 +16,7 @@ app.config['MONGO_URI'] = os.getenv("MONGO_URI")
 mongo = PyMongo(app)
 
 # --- Global timer duration (in seconds) ---
-GLOBAL_TIMER_DURATION = 15  # 2 hours
+GLOBAL_TIMER_DURATION = 2 * 60 * 60  # 2 hours
 
 # --- Dynamically load teams from env ---
 USERS = {}
@@ -189,6 +189,31 @@ def api_timers():
         "globalTimerDuration": GLOBAL_TIMER_DURATION,
         "globalTimerStart": global_start
     })
+
+@app.route("/api/use_hint", methods=["POST"])
+def api_use_hint():
+    team_name = session.get("team_name")
+    if not team_name:
+        return jsonify({"error": "Not logged in"}), 401
+
+    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    if not team_doc:
+        return jsonify({"error": "Team not found"}), 404
+
+    current_idx = team_doc["current_quest_idx"]
+    quest_id = team_doc["quest_order"][current_idx]
+
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+
+    mongo.db.teams.update_one(
+        {"_id": team_doc["_id"]},
+        {"$set": {
+            f"quest_progress.{quest_id}.used_hint": True,
+            f"quest_progress.{quest_id}.hint_revealed_at": now_ts
+        }}
+    )
+
+    return jsonify({"status": "ok"})
 
 
 # -------------------------

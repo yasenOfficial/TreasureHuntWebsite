@@ -4,7 +4,8 @@ __pychache__/
 *.pyo
 *.pyd
 *.pdb
-.env/
+
+.env
 
 static/images/
 static/audio/
