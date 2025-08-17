@@ -372,14 +372,29 @@ input[type="file"]:focus {
   pointer-events: none;
 }
 .container button:hover::before { width: 300px; height: 300px; }
+
+/* Hover effect: scale up and glow */
 .container button:hover {
   transform: translateY(-3px) !important;
   box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4) !important;
   color: var(--text-dark) !important;
+  background: linear-gradient(145deg, var(--accent-copper), var(--accent-gold)) !important;
+  text-shadow: 0 0 10px var(--accent-gold);
 }
-.container button:active { transform: translateY(-1px) !important; }
-.container button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
-.container button:disabled:hover { transform: none !important; }
+
+.container button:active {
+  transform: translateY(-1px) !important; /* Slight press effect */
+}
+
+.container button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.container button:disabled:hover {
+  transform: none !important;
+}
 
 /* Skip button — dark red warning */
 #skip-btn {
@@ -390,10 +405,12 @@ input[type="file"]:focus {
   width: 100%;
   padding: 0.8rem 1.5rem !important;
 }
+
 #skip-btn:hover {
   background: linear-gradient(145deg, #a52a2a, #5c0000) !important; /* lighter red to deep red */
   box-shadow: 0 6px 20px rgba(139, 0, 0, 0.4) !important;
   color: var(--text-light) !important;
+  transform: translateY(-2px); /* Slight lift effect */
 }
 
 /* Hint button */
@@ -403,22 +420,12 @@ input[type="file"]:focus {
   width: 100%;
   margin-top: 1rem;
 }
-#hint-btn:hover { color: var(--text-light) !important; }
 
-/* Hint content */
-#hint-content {
-  background: var(--bg-card);
-  border: 2px solid var(--accent-gold);
-  border-radius: 10px;
-  padding: 1.5rem;
-  margin-top: 1rem;
-  animation: fadeIn 0.5s ease-in-out;
-}
-#hint-content p { margin-bottom: 0; }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+#hint-btn:hover {
+  background: linear-gradient(145deg, #6b3f1f, #8b4513) !important;
+  box-shadow: 0 6px 20px rgba(139, 69, 19, 0.4) !important;
+  color: var(--text-light) !important;
+  transform: translateY(-2px); /* Slight lift effect */
 }
 
 /* Button container styling */
@@ -430,6 +437,7 @@ div[style*="display:flex"] {
   margin: 1rem 0;
 }
 
+
 /* Toast: ensure the close button stays Bootstrap default */
 .toast .btn-close {
   box-shadow: none !important;
@@ -440,6 +448,14 @@ div[style*="display:flex"] {
   border: 0 !important;
   border-radius: .375rem !important;
 }
+
+/* Custom spacing for carousel controls */
+.carousel-control-prev, .carousel-control-next {
+  margin-left: 1rem; /* Adjusts space between the buttons */
+  margin-right: 1rem; /* Adjusts space between the buttons */
+}
+
+
 
 /* ===== SCOREBOARD ===== */
 .scoreboard .card {

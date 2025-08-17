@@ -1,4 +1,3 @@
-<!-- templates/treasurehunt.html -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -52,6 +51,45 @@
 
       <p>{{ quest.text }}</p>
 
+      <!-- Quest Image Carousel -->
+      {% if quest_images and quest_images|length > 0 %}
+        <div id="questImagesCarousel" class="carousel slide" data-bs-ride="carousel">
+          <div class="carousel-inner">
+            {% for img in quest_images %}
+              <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
+                <img
+                  class="d-block w-100"
+                  src="{{ url_for('static', filename=img) }}"
+                  alt="Quest image {{ loop.index0 + 1 }}"
+                />
+              </div>
+            {% endfor %}
+          </div>
+          
+          <!-- Image counter (hidden data attribute) -->
+                     <div class="text-center">
+
+          <div id="carousel-container text-center" data-total-images="{{ quest_images|length }}">
+            <span id="carousel-image-counter" style="font-size: 1.25rem; font-weight: bold;">1/{{ quest_images|length }}</span>
+          </div>          </div>
+
+
+
+          <!-- Carousel controls -->
+          <div class="d-flex justify-content-center mt-2">
+            <button class="carousel-control-prev" type="button" data-bs-target="#questImagesCarousel" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#questImagesCarousel" data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Next</span>
+            </button>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Quest Image (Single) for backward compatibility -->
       {% if quest.image_path %}
       <img
         src="{{ url_for('static', filename=quest.image_path) }}"
@@ -71,52 +109,61 @@
         <!-- Hidden value for grid result (filled by JS if a grid exists) -->
         <input type="hidden" id="grid_cipher" name="grid_cipher" value="" />
 
-        {% if quest.grid %} {% set parts = quest.grid.split('x') %} {% set rows
-        = parts[0] | int %} {% set cols = parts[1] | int %}
+        {% if quest.grid %}
+        {% set parts = quest.grid.split('x') %}
+        {% set rows = parts[0] | int %}
+        {% set cols = parts[1] | int %}
         <div class="grid-wrapper" style="margin: 12px 0">
-          <label style="display: block; margin-bottom: 6px"
-            >Grid ({{ rows }}×{{ cols }}):</label
-          >
+          <label style="display: block; margin-bottom: 6px">
+            Grid ({{ rows }}×{{ cols }}):
+          </label>
           <div
             id="grid-container"
             style="display:grid; grid-template-columns: repeat({{ cols }}, 40px); gap: 6px;"
           >
-            {% for r in range(rows) %} {% for c in range(cols) %}
-            <input
-              type="text"
-              class="grid-cell"
-              data-r="{{ r }}"
-              data-c="{{ c }}"
-              maxlength="1"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              required
-              style="
-                width: 40px;
-                height: 40px;
-                text-align: center;
-                font-size: 18px;
-              "
-            />
-            {% endfor %} {% endfor %}
+            {% for r in range(rows) %}
+              {% for c in range(cols) %}
+                <input
+                  type="text"
+                  class="grid-cell"
+                  data-r="{{ r }}"
+                  data-c="{{ c }}"
+                  maxlength="1"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  style="
+                    width: 40px;
+                    height: 40px;
+                    text-align: center;
+                    font-size: 18px;
+                  "
+                />
+              {% endfor %}
+            {% endfor %}
           </div>
         </div>
-        {% endif %} {% if phase_answers %}
+        {% endif %}
+
+        {% if phase_answers %}
         <div class="phase-answers">
           <h4>Answers from Phase {{ quest.list_phase_answers }}</h4>
           <ul>
             {% for ans in phase_answers %}
-            <li>{{ ans }}</li>
+              <li>{{ ans }}</li>
             {% endfor %}
           </ul>
         </div>
-        {% endif %} {% if quest.correct_answers and
-        quest.correct_answers.strip() %}
+        {% endif %}
+
+        {% if quest.correct_answers and quest.correct_answers.strip() %}
         <div class="mb-3">
           <label for="answer" class="form-label">Your Answer:</label>
           <input type="text" id="answer" name="answer" required />
         </div>
-        {% endif %} {% if quest.file_required %}
+        {% endif %}
+
+        {% if quest.file_required %}
         <div class="mb-3">
           <label for="uploaded_file" class="form-label">Upload File:</label>
           <input type="file" id="uploaded_file" name="uploaded_file" required />
@@ -156,5 +203,8 @@
     <script src="{{ url_for('static', filename='js/gridBuilder.js') }}"></script>
     <script src="{{ url_for('static', filename='js/inputFile.js') }}"></script>
     <script src="{{ url_for('static', filename='js/hintHandler.js') }}"></script>
+
+    <!-- Separate JS file for carousel counter -->
+    <script src="{{ url_for('static', filename='js/carousel.js') }}"></script>
   </body>
 </html>

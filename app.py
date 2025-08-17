@@ -80,6 +80,15 @@ def time_up():
 # -------------------------
 @app.route('/treasurehunt')
 def treasurehunt():
+
+    def _as_list(val):
+        if not val:
+            return []
+        if isinstance(val, list):
+            return [str(x) for x in val if str(x).strip()]
+        return [str(val)]
+
+
     team_name = session.get('team_name')
     if not team_name:
         return redirect(url_for('login'))
@@ -105,6 +114,10 @@ def treasurehunt():
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+ 
+    quest_images = _as_list(
+        quest.get("image_paths") or quest.get("image_path")
+    )
     
     phase_answers = []
     if quest.get("list_phase_answers") is not None:
@@ -149,7 +162,8 @@ def treasurehunt():
         hint_timer_start=hint_timer_start,
         global_timer_duration=GLOBAL_TIMER_DURATION,
         global_timer_start=global_start,
-        phase_answers=phase_answers   # <-- new
+        phase_answers=phase_answers,
+        quest_images=quest_images  # <-- NEW
     )
 
 
