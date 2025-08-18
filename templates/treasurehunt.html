@@ -55,6 +55,8 @@
       {% if quest_images and quest_images|length > 0 %}
       <div
         id="carousel-container"
+        data-carousel="container"
+        data-target="questImagesCarousel"
         data-total-images="{{ quest_images|length }}"
       >
         <div
@@ -108,7 +110,7 @@
         <!-- Image counter -->
         <div class="text-center mt-2">
           <span
-            id="carousel-image-counter"
+            data-carousel="counter"
             style="font-size: 1.25rem; font-weight: bold"
             >1/{{ quest_images|length }}</span
           >
@@ -118,7 +120,7 @@
 
       <!-- Quest Image (Single) for backward compatibility -->
       {% if quest.image_path %}
-      <imgv
+      <img
         src="{{ url_for('static', filename=quest.image_path) }}"
         alt="Quest Image"
         style="max-width: 300px"
@@ -136,42 +138,51 @@
         <!-- Hidden value for grid result (filled by JS if a grid exists) -->
         <input type="hidden" id="grid_cipher" name="grid_cipher" value="" />
 
-        {% if quest.grid or quest.grid_values %} {# Determine rows and cols
-        safely #} {% if quest.grid_values %} {% set rows =
-        quest.grid_values|length %} {% set cols = quest.grid_values[0]|length if
-        rows > 0 else 0 %} {% else %} {% set grid_str = quest.grid|string %} {%
-        set parts = grid_str.lower().split('x') %} {% set rows = parts[0]|int if
-        parts|length > 1 else 0 %} {% set cols = parts[1]|int if parts|length >
-        1 else 0 %} {% endif %} {% if rows > 0 and cols > 0 %}
-        <div class="grid-wrapper" style="margin: 12px 0">
-          <label style="display: block; margin-bottom: 6px">
-            Grid ({{ rows }}×{{ cols }}):
-          </label>
-          <div
-            id="grid-container"
-            style="display:grid; grid-template-columns: repeat({{ cols }}, 40px); gap: 6px;"
-          >
-            {% for r in range(rows) %} {% for c in range(cols) %}
-            <input
-              type="text"
-              class="grid-cell"
-              data-r="{{ r }}"
-              data-c="{{ c }}"
-              maxlength="1"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              required
-              style="
-                width: 40px;
-                height: 40px;
-                text-align: center;
-                font-size: 18px;
-              "
-            />
-            {% endfor %} {% endfor %}
+        {% if quest.grid or quest.grid_values %}
+          {# Determine rows and cols safely #}
+          {% if quest.grid_values %}
+            {% set rows = quest.grid_values|length %}
+            {% set cols = quest.grid_values[0]|length if rows > 0 else 0 %}
+          {% else %}
+            {% set grid_str = quest.grid|string %}
+            {% set parts = grid_str.lower().split('x') %}
+            {% set rows = parts[0]|int if parts|length > 1 else 0 %}
+            {% set cols = parts[1]|int if parts|length > 1 else 0 %}
+          {% endif %}
+          {% if rows > 0 and cols > 0 %}
+          <div class="grid-wrapper" style="margin: 12px 0">
+            <label style="display: block; margin-bottom: 6px">
+              Grid ({{ rows }}×{{ cols }}):
+            </label>
+            <div
+              id="grid-container"
+              style="display:grid; grid-template-columns: repeat({{ cols }}, 40px); gap: 6px;"
+            >
+              {% for r in range(rows) %}
+                {% for c in range(cols) %}
+                <input
+                  type="text"
+                  class="grid-cell"
+                  data-r="{{ r }}"
+                  data-c="{{ c }}"
+                  maxlength="1"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  style="
+                    width: 40px;
+                    height: 40px;
+                    text-align: center;
+                    font-size: 18px;
+                  "
+                />
+                {% endfor %}
+              {% endfor %}
+            </div>
           </div>
-        </div>
-        {% endif %} {% endif %} 
+          {% endif %}
+        {% endif %}
+
         {% if phase_answers %}
         <div class="phase-answers">
           <h4>Answers from Phase {{ quest.list_phase_answers }}</h4>
@@ -181,13 +192,16 @@
             {% endfor %}
           </ul>
         </div>
-        {% endif %} {% if quest.correct_answers and quest.correct_answers|length
-        > 0 %}
+        {% endif %}
+
+        {% if quest.correct_answers and quest.correct_answers|length > 0 %}
         <div class="mb-3">
           <label for="answer" class="form-label">Your Answer:</label>
           <input type="text" id="answer" name="answer" required />
         </div>
-        {% endif %} {% if quest.file_required %}
+        {% endif %}
+
+        {% if quest.file_required %}
         <div class="mb-3">
           <label for="uploaded_file" class="form-label">Upload File:</label>
           <input type="file" id="uploaded_file" name="uploaded_file" required />
@@ -199,12 +213,86 @@
         </div>
       </form>
 
-      <!-- Separate Skip form moved BELOW hint -->
       {% if quest.hint %}
       <div style="margin-top: 12px">
         <button id="hint-btn" type="button">Show Hint</button>
       </div>
+
       <div id="hint-content" style="display: none; margin-top: 6px">
+        {# --- HINT IMAGES (single or carousel) --- #}
+        {% if hint_images and hint_images|length > 0 %}
+          {% if hint_images|length == 1 %}
+            {% set img = hint_images[0] %}
+            <div class="text-center mb-2">
+              <img
+                src="{{ img if img.startswith('http://') or img.startswith('https://') or img.startswith('/') else url_for('static', filename=img) }}"
+                alt="Hint image"
+                class="img-fluid rounded"
+                style="max-height: 320px; object-fit: contain"
+              />
+            </div>
+          {% else %}
+            <div
+              id="hint-carousel-container"
+              data-carousel="container"
+              data-target="hintImagesCarousel"
+              data-total-images="{{ hint_images|length }}"
+            >
+              <div
+                id="hintImagesCarousel"
+                class="carousel slide mb-2"
+                data-bs-ride="carousel"
+              >
+                <div class="carousel-inner">
+                  {% for img in hint_images %}
+                  <div
+                    class="carousel-item {% if loop.index0 == 0 %}active{% endif %}"
+                  >
+                    <img
+                      src="{{ img if img.startswith('http://') or img.startswith('https://') or img.startswith('/') else url_for('static', filename=img) }}"
+                      alt="Hint image {{ loop.index }}"
+                      style="max-width: 300px"
+                    />
+                  </div>
+                  {% endfor %}
+                </div>
+                          <div class="d-flex justify-content-center mt-2 gap-2">
+
+                <button
+                  class="carousel-control-prev"
+                  type="button"
+                  data-bs-target="#hintImagesCarousel"
+                  data-bs-slide="prev"
+                >
+                  <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                  <span class="visually-hidden">Previous</span>
+                </button>
+                <button
+                  class="carousel-control-next"
+                  type="button"
+                  data-bs-target="#hintImagesCarousel"
+                  data-bs-slide="next"
+                >
+                  <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                  <span class="visually-hidden">Next</span>
+                </button>
+              </div>
+                            </div>
+
+
+              <!-- Hint image counter -->
+              <div class="text-center mt-2">
+                <span
+                  data-carousel="counter"
+                  style="font-size: 1.25rem; font-weight: bold"
+                  >1/{{ hint_images|length }}</span
+                >
+              </div>
+            </div>
+          {% endif %}
+        {% endif %}
+
+        {# --- HINT TEXT --- #}
         <p>{{ quest.hint }}</p>
       </div>
       {% endif %}

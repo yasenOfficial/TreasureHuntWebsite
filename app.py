@@ -105,7 +105,10 @@ def treasurehunt():
         if isinstance(val, list):
             return [str(x) for x in val if str(x).strip()]
         return [str(val)]
+    
     quest_images = _as_list(quest.get("image_paths") or quest.get("image_path"))
+    hint_images = _as_list(quest.get("hint_image_paths") or quest.get("hint_image_path"))
+
 
     # --- PHASE ANSWERS ---
     phase_answers = []
@@ -142,7 +145,9 @@ def treasurehunt():
         global_timer_start=global_start,
         phase_answers=phase_answer,
         quest_images=quest_images,
-        status=request.args.get("status")  # <-- for toast
+        hint_images=hint_images,  # <-- NEW
+        status=request.args.get("status"),  # <-- for toast
+
     )
 
 # -------------------------
