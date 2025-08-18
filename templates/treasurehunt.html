@@ -136,8 +136,13 @@
         <!-- Hidden value for grid result (filled by JS if a grid exists) -->
         <input type="hidden" id="grid_cipher" name="grid_cipher" value="" />
 
-        {% if quest.grid %} {% set parts = quest.grid.split('x') %} {% set rows
-        = parts[0] | int %} {% set cols = parts[1] | int %}
+        {% if quest.grid or quest.grid_values %} {# Determine rows and cols
+        safely #} {% if quest.grid_values %} {% set rows =
+        quest.grid_values|length %} {% set cols = quest.grid_values[0]|length if
+        rows > 0 else 0 %} {% else %} {% set grid_str = quest.grid|string %} {%
+        set parts = grid_str.lower().split('x') %} {% set rows = parts[0]|int if
+        parts|length > 1 else 0 %} {% set cols = parts[1]|int if parts|length >
+        1 else 0 %} {% endif %} {% if rows > 0 and cols > 0 %}
         <div class="grid-wrapper" style="margin: 12px 0">
           <label style="display: block; margin-bottom: 6px">
             Grid ({{ rows }}×{{ cols }}):
@@ -166,7 +171,8 @@
             {% endfor %} {% endfor %}
           </div>
         </div>
-        {% endif %} {% if phase_answers %}
+        {% endif %} {% endif %} 
+        {% if phase_answers %}
         <div class="phase-answers">
           <h4>Answers from Phase {{ quest.list_phase_answers }}</h4>
           <ul>
@@ -175,8 +181,8 @@
             {% endfor %}
           </ul>
         </div>
-        {% endif %} {% if quest.correct_answers and
-        quest.correct_answers.strip() %}
+        {% endif %} {% if quest.correct_answers and quest.correct_answers|length
+        > 0 %}
         <div class="mb-3">
           <label for="answer" class="form-label">Your Answer:</label>
           <input type="text" id="answer" name="answer" required />

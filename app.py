@@ -3,6 +3,7 @@ from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from datetime import datetime, timezone
 import os
+import ast
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import pathlib
@@ -80,15 +81,6 @@ def time_up():
 # -------------------------
 @app.route('/treasurehunt')
 def treasurehunt():
-
-    def _as_list(val):
-        if not val:
-            return []
-        if isinstance(val, list):
-            return [str(x) for x in val if str(x).strip()]
-        return [str(val)]
-
-
     team_name = session.get('team_name')
     if not team_name:
         return redirect(url_for('login'))
@@ -98,75 +90,60 @@ def treasurehunt():
         return redirect(url_for('logout'))
 
     now = int(datetime.now(timezone.utc).timestamp())
-
-    # --- Check global timer expiration ---
-    global_start = team_doc.get("global_timer_start")
-    if global_start is None:
-        global_start = now
-        mongo.db.teams.update_one(
-            {"_id": team_doc["_id"]},
-            {"$set": {"global_timer_start": global_start}}
-        )
+    global_start = team_doc.get("global_timer_start", now)
     if now >= global_start + GLOBAL_TIMER_DURATION:
         return redirect(url_for('gamefinished', status='timeup'))
 
-    # Current quest
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
- 
-    quest_images = _as_list(
-        quest.get("image_paths") or quest.get("image_path")
-    )
-    
+
+    # --- Quest images ---
+    def _as_list(val):
+        if not val:
+            return []
+        if isinstance(val, list):
+            return [str(x) for x in val if str(x).strip()]
+        return [str(val)]
+    quest_images = _as_list(quest.get("image_paths") or quest.get("image_path"))
+
+    # --- PHASE ANSWERS ---
     phase_answers = []
     if quest.get("list_phase_answers") is not None:
         target_phase = quest["list_phase_answers"]
         phase_quests = mongo.db.quests.find({"phase": target_phase})
         for pq in phase_quests:
-            ans = pq.get("correct_answers", "")
+            ans = pq.get("correct_answers")
             if ans:
-                first_answer = ans.split("|")[0].strip()
-                if first_answer:
-                    phase_answers.append(first_answer)
+                # Take only the first answer, split by | if multiple are in a string
+                first_answer = str(ans).split("|")[0].strip()
+                phase_answers.append(first_answer)
 
-    # Remove duplicates while preserving order
-    phase_answers = list(dict.fromkeys(phase_answers))
+    # Only keep the **first answer of the list**, as a string
+    phase_answer = [ast.literal_eval(a)[0] for a in phase_answers] if phase_answers else None
 
+    print(phase_answer)
 
-
-    # Progress for this quest
+    # --- Quest progress ---
     progress = team_doc.get("quest_progress", {}).get(quest_id, {})
-    if "quest_timer_start" not in progress:
-        progress["quest_timer_start"] = now
-    if "hint_timer_start" not in progress:
-        progress["hint_timer_start"] = now
-
-    # Update in DB if new
-    mongo.db.teams.update_one(
-        {"_id": team_doc["_id"]},
-        {"$set": {f"quest_progress.{quest_id}": progress}}
-    )
-
-    quest_timer_start = progress["quest_timer_start"]
-    hint_timer_start = progress["hint_timer_start"]
-    quest_timer_duration = quest.get('quest_timer_duration', 0)
-    hint_timer_duration = quest.get('hint_timer_duration', 0)
+    progress.setdefault("quest_timer_start", now)
+    progress.setdefault("hint_timer_start", now)
+    mongo.db.teams.update_one({"_id": team_doc["_id"]},
+                              {"$set": {f"quest_progress.{quest_id}": progress}})
 
     return render_template(
         "treasurehunt.html",
         quest=quest,
-        quest_timer_duration=quest_timer_duration,
-        quest_timer_start=quest_timer_start,
-        hint_timer_duration=hint_timer_duration,
-        hint_timer_start=hint_timer_start,
+        quest_timer_duration=quest.get('quest_timer_duration', 0),
+        quest_timer_start=progress["quest_timer_start"],
+        hint_timer_duration=quest.get('hint_timer_duration', 0),
+        hint_timer_start=progress["hint_timer_start"],
         global_timer_duration=GLOBAL_TIMER_DURATION,
         global_timer_start=global_start,
-        phase_answers=phase_answers,
-        quest_images=quest_images  # <-- NEW
+        phase_answers=phase_answer,
+        quest_images=quest_images,
+        status=request.args.get("status")  # <-- for toast
     )
-
-
 
 # -------------------------
 # API: TIMERS (for JS)
@@ -270,16 +247,15 @@ def submit():
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
 
-    # Answers
+    # --- Answers ---
     answer = (request.form.get('answer') or '').strip().lower()
     grid_cipher_raw = (request.form.get('grid_cipher') or '').strip()
 
-    # Simple text answers list
-    correct_answers = [a.strip().lower()
-                       for a in (quest.get("correct_answers", "") or "").split("|")
-                       if a.strip()]
+    # --- Use list directly from DB ---
+# --- Use list directly from DB, safely convert all items to strings ---
+    correct_answers = [str(a).strip().lower() for a in (quest.get("correct_answers") or [])]
 
-    # File upload
+    # --- File upload handling ---
     uploaded_file = request.files.get("uploaded_file")
     file_uploaded = False
     if uploaded_file and uploaded_file.filename.strip():
@@ -297,90 +273,85 @@ def submit():
             {"$push": {f"quest_progress.{quest_id}.uploaded_files": str(file_path)}}
         )
 
-    # Grid helpers
+    # --- Grid helpers ---
     def only_digits(s: str) -> str:
         return ''.join(ch for ch in s if ch.isdigit())
 
-    # Determine if quest has a grid like "4x4"
     has_grid = bool(quest.get("grid"))
     grid_matrix = None
     grid_ok = False
 
     if has_grid:
-        # normalize incoming cipher (should already be digits from gridBuilder)
         gc = only_digits(grid_cipher_raw)
-        # Parse grid dims
-        try:
-            rows, cols = map(int, str(quest["grid"]).lower().split("x"))
-        except Exception:
-            rows, cols = 0, 0
 
-        # If we got the right length, convert to matrix and check
+        # Determine rows and cols
+        if quest.get("grid_values"):
+            rows = len(quest["grid_values"])
+            cols = len(quest["grid_values"][0]) if rows > 0 else 0
+        else:
+            # fallback to old 'grid' string if grid_values not present
+            grid_fallback = quest.get("grid", "0x0")
+            if isinstance(grid_fallback, str):
+                try:
+                    rows, cols = map(int, grid_fallback.lower().split("x"))
+                except Exception:
+                    rows, cols = 0, 0
+            elif isinstance(grid_fallback, list) and len(grid_fallback) == 2:
+                rows, cols = int(grid_fallback[0]), int(grid_fallback[1])
+            else:
+                rows, cols = 0, 0
+
+        # Only process if dimensions make sense and submitted grid has correct length
         if rows > 0 and cols > 0 and len(gc) == rows * cols:
-            # Save in DB as 2D array
+            # Save submitted grid as 2D matrix
             grid_matrix = [
-                [int(gc[r * cols + c]) for c in range(cols)]
-                for r in range(rows)
+                [int(gc[r * cols + c]) for c in range(cols)] for r in range(rows)
             ]
 
-            # Build expected string row-major
+            # Build expected candidates
             expected = None
             if quest.get("grid_answer"):
                 expected = only_digits(str(quest["grid_answer"]))
             elif quest.get("grid_values"):
-                try:
-                    flat = ''.join(''.join(str(x) for x in row) for row in quest["grid_values"])
-                    expected = only_digits(flat)
-                except Exception:
-                    expected = None
-            # if there's also correct_answers, allow matching there too
+                flat = ''.join(str(x) for row in quest["grid_values"] for x in row)
+                expected = only_digits(flat)
+
             candidates = [expected] if expected else []
             candidates += correct_answers
 
-            if candidates:
-                grid_ok = gc in candidates
-            else:
-                # If no explicit answers are defined, accept any full grid submission
-                grid_ok = True
+            # Grid is correct if matches expected candidates or if no expected values
+            grid_ok = gc in candidates if candidates else True
 
-    # Completion rules
+
+
+    # --- Determine completion ---
     completed = False
     if has_grid:
         completed = grid_ok
+    elif correct_answers:
+        completed = bool(answer) and (answer in correct_answers)
     else:
-        if correct_answers:
-            completed = bool(answer) and (answer in correct_answers)
-        else:
-            # no answer required → complete when file is required & uploaded
-            if quest.get("file_required"):
-                completed = file_uploaded
+        # No answer required → complete if file uploaded (file_required quests)
+        if quest.get("file_required"):
+            completed = file_uploaded
 
-    # Persist progress
+    # --- Persist progress ---
     update_doc = {
         f"quest_progress.{quest_id}.submitted_answer": answer,
         f"quest_progress.{quest_id}.completed": completed
     }
-    # store grid_matrix (2D)
     if has_grid:
         update_doc[f"quest_progress.{quest_id}.grid_matrix"] = grid_matrix
 
-    mongo.db.teams.update_one(
-        {"_id": team_doc["_id"]},
-        {"$set": update_doc}
-    )
+    mongo.db.teams.update_one({"_id": team_doc["_id"]}, {"$set": update_doc})
 
-    # Next step or toast
+    # --- Redirect with status ---
     if completed:
-        # COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
-
         if current_idx + 1 < len(team_doc["quest_order"]):
-            mongo.db.teams.update_one(
-                {"_id": team_doc["_id"]},
-                {"$set": {"current_quest_idx": current_idx + 1}}
-            )
+            mongo.db.teams.update_one({"_id": team_doc["_id"]}, {"$set": {"current_quest_idx": current_idx + 1}})
             return redirect(url_for('treasurehunt', status="success"))
         else:
-            return redirect(url_for('gamefinished'))
+            return redirect(url_for('gamefinished', status="completed"))
     else:
         return redirect(url_for('treasurehunt', status="wrong"))
 
