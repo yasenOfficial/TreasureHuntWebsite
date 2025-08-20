@@ -594,5 +594,54 @@ div[style*="display:flex"] {
   font-family: 'Cinzel', serif;
   box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4);
 }
+/* ====== AUDIO PLAYER FIX ====== */
+audio {
+  width: 100%;
+  height: 42px;
+  border-radius: 20px;
+  border: 2px solid var(--accent-gold);
+  background: var(--bg-primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,.5);
+  overflow: hidden;
+}
 
+/* Chrome / Safari / Edge */
+audio::-webkit-media-controls-panel {
+  background: linear-gradient(145deg, var(--bg-card), var(--bg-secondary));
+  border-radius: 12px;
+  border: none; /* removes inner white line */
+}
 
+/* Timeline (progress bar) */
+audio::-webkit-media-controls-timeline {
+  background: var(--bg-primary) !important;
+  border-radius: 6px !important;
+  border: none !important;
+  box-shadow: inset 0 0 6px rgba(212,175,55,0.4); /* subtle gold glow */
+}
+
+/* Volume slider */
+audio::-webkit-media-controls-volume-slider {
+  background: var(--bg-primary) !important;
+  border-radius: 6px !important;
+  border: none !important;
+  box-shadow: inset 0 0 6px rgba(184,115,51,0.4); /* copper glow */
+}
+
+/* Current time / duration text */
+audio::-webkit-media-controls-current-time-display,
+audio::-webkit-media-controls-time-remaining-display {
+  color: var(--accent-gold) !important;
+  font-family: 'Cinzel', serif !important;
+  font-weight: 600 !important;
+}
+
+/* Firefox (fallback) */
+audio::-moz-range-track {
+  background: var(--bg-primary) !important;
+  border: none !important;
+}
+audio::-moz-range-thumb {
+  background: var(--accent-gold) !important;
+  border: none !important;
+}

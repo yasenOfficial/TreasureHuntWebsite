@@ -138,10 +138,12 @@ def treasurehunt():
     quest_id = team_doc["quest_order"][current_idx]
     quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
 
-    # NEW: counters for header
     total_quests = len(team_doc["quest_order"])
     current_display = current_idx + 1
-
+    
+    audio_path = quest.get("audio_path")
+    if not audio_path or not str(audio_path).strip():
+        audio_path = None
 
     return render_template(
         "treasurehunt.html",
@@ -156,9 +158,12 @@ def treasurehunt():
         quest_images=quest_images,
         hint_images=hint_images, 
         status=request.args.get("status"),  # <-- for toast
+        audio_path=audio_path,
         
         current_display=current_display,
         total_quests=total_quests,
+        
+        
     )
 
 # -------------------------
