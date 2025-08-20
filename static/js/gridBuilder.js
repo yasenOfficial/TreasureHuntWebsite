@@ -36,3 +36,5 @@ window.addEventListener('DOMContentLoaded', function () {
     gridCipherInput.value = digits;
   });
 });
+
+

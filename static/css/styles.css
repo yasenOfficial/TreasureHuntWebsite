@@ -171,20 +171,28 @@ img {
   max-width: fit-content;
 }
 
-/* Grid Cells */
 .grid-cell {
-  width: 50px !important; height: 50px !important;
+  width: 40px !important;
+  height: 50px !important;
+
+  padding: 0 !important;          /* reset global 1rem padding */
+  margin: 0 !important;           /* no extra spacing */
   text-align: center !important;
-  font-size: 1.2rem !important;
+
+  font-size: 1.3rem !important;
+  line-height: 50px !important;   /* vertical centering */
   font-weight: 600 !important;
+  font-family: 'Cinzel', serif !important;
+
+  background: var(--bg-primary) !important;
+  color: var(--light-gold) !important;
   border: 2px solid var(--accent-copper) !important;
   border-radius: 8px !important;
-  background: var(--bg-primary) !important;
-  color: var(--accent-gold) !important;
-  font-family: 'Cinzel', serif !important;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  box-shadow: 0 2px 6px rgba(0,0,0,.3);
+  caret-color: var(--accent-gold);
 }
+
 .grid-cell:focus {
   outline: none !important;
   border-color: var(--accent-gold) !important;
@@ -241,20 +249,22 @@ label, .form-label {
 }
 
 /* Input fields */
-input[type="text"],
+/* apply only to normal text/password inputs, not grid cells */
+input[type="text"]:not(.grid-cell),
 input[type="password"] {
-  width: 100% !important;
-  padding: 1rem !important;
-  margin-bottom: 1.5rem;
-  border: 2px solid var(--accent-copper) !important;
-  border-radius: 8px !important;
-  background: var(--bg-primary) !important;
-  color: var(--text-light) !important;
-  font-family: 'Cinzel', serif !important;
-  font-size: clamp(0.9rem, 2vw, 1rem);
-  transition: all 0.3s ease;
-  box-shadow: none !important;
+    width: 100% !important;
+    padding: 1rem !important;
+    margin-bottom: 1.5rem;
+    border: 2px solid var(--accent-copper) !important;
+    border-radius: 8px !important;
+    background: var(--bg-primary) !important;
+    color: var(--text-light) !important;
+    font-family: 'Cinzel', serif !important;
+    font-size: clamp(0.9rem, 2vw, 1rem);
+    transition: all 0.3s ease;
+    box-shadow: none !important;
 }
+
 
 /* File Input - Shows filename with medieval styling */
 input[type="file"] {

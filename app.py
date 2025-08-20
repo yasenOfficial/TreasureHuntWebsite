@@ -17,7 +17,7 @@ app.config['MONGO_URI'] = os.getenv("MONGO_URI")
 mongo = PyMongo(app)
 
 # --- Global timer duration (in seconds) ---
-GLOBAL_TIMER_DURATION = 2 * 60 * 60  # 2 hours
+GLOBAL_TIMER_DURATION = 10 * 60 * 60  # 2 hours
 
 # --- Dynamically load teams from env ---
 USERS = {}
@@ -133,6 +133,15 @@ def treasurehunt():
     progress.setdefault("hint_timer_start", now)
     mongo.db.teams.update_one({"_id": team_doc["_id"]},
                               {"$set": {f"quest_progress.{quest_id}": progress}})
+    
+    current_idx = team_doc["current_quest_idx"]
+    quest_id = team_doc["quest_order"][current_idx]
+    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+
+    # NEW: counters for header
+    total_quests = len(team_doc["quest_order"])
+    current_display = current_idx + 1
+
 
     return render_template(
         "treasurehunt.html",
@@ -145,9 +154,11 @@ def treasurehunt():
         global_timer_start=global_start,
         phase_answers=phase_answer,
         quest_images=quest_images,
-        hint_images=hint_images,  # <-- NEW
+        hint_images=hint_images, 
         status=request.args.get("status"),  # <-- for toast
-
+        
+        current_display=current_display,
+        total_quests=total_quests,
     )
 
 # -------------------------
