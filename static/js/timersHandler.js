@@ -44,12 +44,21 @@ window.addEventListener('DOMContentLoaded', function () {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins
-      .toString()
-      .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
-  fetch('/api/timers')
+  // CSRF token from <meta name="csrf-token" content="{{ csrf_token() }}">
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  fetch('/api/timers', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrf,   // Flask-WTF accepts X-CSRFToken or X-CSRF-Token
+    },
+    credentials: 'same-origin', // send session cookie
+    body: '{}'                  // empty JSON payload
+  })
     .then(res => {
       // If server says "forbidden" and sends redirect, read it as JSON anyway
       if (res.status === 403 || res.status === 401) {
@@ -83,7 +92,7 @@ window.addEventListener('DOMContentLoaded', function () {
       const overallDuration = data.globalTimerDuration;
 
       const submitBtn = document.getElementById('submit-btn');
-      const skipBtn = document.getElementById('skip-btn');      // <— ADDED
+      const skipBtn = document.getElementById('skip-btn');
       const hintBtn = document.getElementById('hint-btn');
       const hintContent = document.getElementById('hint-content');
       const globalTimerElem = document.getElementById('global-timer');
@@ -128,15 +137,15 @@ window.addEventListener('DOMContentLoaded', function () {
             submitBtn.textContent = `⏳ Submit in ${remaining}s`;
           }
           if (skipBtn) {
-            skipBtn.disabled = true;                       // <— ADDED
-            skipBtn.textContent = `⏳ Skip in ${remaining}s`; // <— ADDED
+            skipBtn.disabled = true;
+            skipBtn.textContent = `⏳ Skip in ${remaining}s`;
           }
         } else {
           if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = "Submit";
           }
-          if (skipBtn) {                                   // <— ADDED
+          if (skipBtn) {
             skipBtn.disabled = false;
             skipBtn.textContent = "Skip";
           }

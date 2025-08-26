@@ -220,7 +220,7 @@ def treasurehunt():
 # -------------------------
 # API: TIMERS (for JS)
 # -------------------------
-@app.route('/api/timers')
+@app.route('/api/timers', methods=['GET', 'POST'])
 def api_timers():
     team_name = session.get('team_name')
     if not team_name:
