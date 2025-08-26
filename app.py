@@ -558,6 +558,26 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.after_request
+def set_security_headers(resp):
+    # Content Security Policy (CSP) – limit where scripts/styles/images can load from
+    resp.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' https://cdn.jsdelivr.net; "   # allow jsdelivr CDN
+        "style-src 'self' https://cdn.jsdelivr.net; "    # allow CSS from jsdelivr
+        "img-src 'self' data:; "                         # images + inline data URIs
+        "media-src 'self'; "                             # audio/video only from your server
+        "object-src 'none'; "                            # disallow Flash/old plugins
+    )
+
+    # Extra protections
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
+    return resp
+
 if __name__ == '__main__':
     # Reduce noisy logs in prod if you want:
     logging.basicConfig(level=logging.INFO)
