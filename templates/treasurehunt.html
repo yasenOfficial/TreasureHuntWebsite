@@ -2,6 +2,8 @@
   <html lang="en">
     <head>
       <meta charset="UTF-8" />
+      <meta name="csrf-token" content="{{ csrf_token() }}">
+
       <title>Treasure Hunt</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -134,6 +136,8 @@
           enctype="multipart/form-data"
           style="margin-top: 12px"
         >
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
           <input type="hidden" name="quest_id" value="{{ quest._id }}" />
           <!-- Hidden value for grid result (filled by JS if a grid exists) -->
           <input type="hidden" id="grid_cipher" name="grid_cipher" value="" />
@@ -306,6 +310,8 @@
           method="post"
           style="display: block; margin-top: 16px; text-align: center"
         >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
           <button id="skip-btn" type="submit">Skip</button>
         </form>
       </div>

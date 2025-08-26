@@ -1,13 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
   const hintBtn = document.getElementById("hint-btn");
   const hintContent = document.getElementById("hint-content");
+const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
   if (hintBtn && hintContent) {
     hintBtn.addEventListener("click", () => {
       fetch("/api/use_hint", {
         method: "POST",
         headers: {
-          "X-Requested-With": "XMLHttpRequest"
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRFToken": csrf
         }
       })
         .then(res => {

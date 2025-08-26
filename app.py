@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, url_for, jsonify, abort
-from flask_pymongo import PyMongo
+from flask_wtf import CSRFProtect
+from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime, timezone
 import os
@@ -7,6 +8,8 @@ import ast
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 import pathlib
+import bcrypt
+import logging
 
 load_dotenv()
 
@@ -14,19 +17,65 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 app.config['MONGO_URI'] = os.getenv("MONGO_URI")
 
-mongo = PyMongo(app)
+# --- Security & upload caps ---
+app.config.update(
+    SECRET_KEY=os.getenv("SECRET_KEY"),          # long, random (32+ bytes)
+    # SESSION_COOKIE_HTTPONLY=True,
+    # SESSION_COOKIE_SECURE=True,                  # set False only for local HTTP testing
+    SESSION_COOKIE_SAMESITE="Lax",
+    PERMANENT_SESSION_LIFETIME=60*60*3,          # 3h session
+    # MAX_CONTENT_LENGTH=10 * 1024 * 1024,         # 10 MB upload cap
+)
+
+csrf = CSRFProtect(app)  # protects all POST/PUT/PATCH/DELETE by default
+
+mongo_uri = os.getenv("MONGO_URI")
+client = MongoClient(mongo_uri)
+db = client["treasurehunt"]
+
+# --- Uploads: outside static, whitelisted extensions ---
+ALLOWED_EXT = {
+  "jpg","jpeg","png","gif","mp4","pdf",
+  "heic","heif","hevc","mov","m4v","heifs"  # iOS-ish formats
+}
+UPLOAD_ROOT = pathlib.Path(os.getenv("UPLOAD_ROOT", "./uploads")).resolve()
+UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+
+def allowed_filename(filename: str) -> bool:
+    if "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[-1].lower()
+    return ext in ALLOWED_EXT
 
 # --- Global timer duration (in seconds) ---
-GLOBAL_TIMER_DURATION = 10 * 60 * 60  # 2 hours
+GLOBAL_TIMER_DURATION = int(2.5 * 60 * 60)
 
-# --- Dynamically load teams from env ---
-USERS = {}
+# --- Users: prefer bcrypt hashes in env: TEAM{i}PASS_HASH ---
+# If *_HASH isn't present, will fall back to plaintext compare (log a warning).
+USERS_HASHED = {}  # {username: bcrypt_hash_bytes}
+USERS_PLAIN = {}   # {username: plaintext} (only if no hash provided)
+
 for i in range(1, 5):  # Adjust if more teams
     user = os.getenv(f"TEAM{i}USER")
-    pw = os.getenv(f"TEAM{i}PASS")
-    if user and pw:
-        USERS[user] = pw
+    pw_hash = os.getenv(f"TEAM{i}PASS_HASH")
+    pw_plain = os.getenv(f"TEAM{i}PASS")
 
+    if user and pw_hash:
+        USERS_HASHED[user] = pw_hash.encode("utf-8")
+    elif user and pw_plain:
+        USERS_PLAIN[user] = pw_plain
+        app.logger.warning("Using plaintext password for %s. Consider TEAM%dPASS_HASH with bcrypt.", user, i)
+
+def verify_password(user: str, provided: str) -> bool:
+    """Check password using bcrypt if available, else plaintext fallback."""
+    if user in USERS_HASHED:
+        try:
+            return bcrypt.checkpw(provided.encode("utf-8"), USERS_HASHED[user])
+        except Exception:
+            return False
+    if user in USERS_PLAIN:
+        return provided == USERS_PLAIN[user]
+    return False
 
 # -------------------------
 # LOGIN
@@ -34,19 +83,22 @@ for i in range(1, 5):  # Adjust if more teams
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        team = request.form.get('team')
-        password = request.form.get('password')
-        if USERS.get(team) == password:
+        team = (request.form.get('team') or "").strip()
+        password = (request.form.get('password') or "")
+
+        if verify_password(team, password):
+            # rotate session to avoid fixation
+            session.clear()
             session['team_name'] = team
 
             # Ensure team doc exists
-            team_doc = mongo.db.teams.find_one({"team_name": team})
+            team_doc = db.teams.find_one({"team_name": team})
             now_ts = int(datetime.now(timezone.utc).timestamp())
 
             if not team_doc:
                 # Initialize with a default quest order (sorted by quest_number)
-                quest_ids = [str(q["_id"]) for q in mongo.db.quests.find().sort("quest_number", 1)]
-                mongo.db.teams.insert_one({
+                quest_ids = [str(q["_id"]) for q in db.quests.find().sort("quest_number", 1)]
+                db.teams.insert_one({
                     "team_name": team,
                     "quest_order": quest_ids,
                     "current_quest_idx": 0,
@@ -56,7 +108,7 @@ def login():
             else:
                 # Ensure global timer exists for old teams
                 if "global_timer_start" not in team_doc:
-                    mongo.db.teams.update_one(
+                    db.teams.update_one(
                         {"_id": team_doc["_id"]},
                         {"$set": {"global_timer_start": now_ts}}
                     )
@@ -66,7 +118,6 @@ def login():
             return render_template('login.html', error="Invalid credentials")
     return render_template('login.html')
 
-
 # -------------------------
 # TIME UP PAGE (kept but redirects to gamefinished)
 # -------------------------
@@ -74,7 +125,6 @@ def login():
 def time_up():
     # Keep the route for compatibility, but unify UI at /gamefinished
     return redirect(url_for('gamefinished', status='timeup'))
-
 
 # -------------------------
 # TREASURE HUNT MAIN PAGE
@@ -85,7 +135,7 @@ def treasurehunt():
     if not team_name:
         return redirect(url_for('login'))
 
-    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    team_doc = db.teams.find_one({"team_name": team_name})
     if not team_doc:
         return redirect(url_for('logout'))
 
@@ -96,7 +146,11 @@ def treasurehunt():
 
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
-    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+
+    # Validate ObjectId to avoid noisy crashes
+    if not ObjectId.is_valid(quest_id):
+        abort(400, description="Invalid quest id")
+    quest = db.quests.find_one({"_id": ObjectId(quest_id)})
 
     # --- Quest images ---
     def _as_list(val):
@@ -109,12 +163,11 @@ def treasurehunt():
     quest_images = _as_list(quest.get("image_paths") or quest.get("image_path"))
     hint_images = _as_list(quest.get("hint_image_paths") or quest.get("hint_image_path"))
 
-
     # --- PHASE ANSWERS ---
     phase_answers = []
     if quest.get("list_phase_answers") is not None:
         target_phase = quest["list_phase_answers"]
-        phase_quests = mongo.db.quests.find({"phase": target_phase})
+        phase_quests = db.quests.find({"phase": target_phase})
         for pq in phase_quests:
             ans = pq.get("correct_answers")
             if ans:
@@ -125,18 +178,19 @@ def treasurehunt():
     # Only keep the **first answer of the list**, as a string
     phase_answer = [ast.literal_eval(a)[0] for a in phase_answers] if phase_answers else None
 
-    print(phase_answer)
-
     # --- Quest progress ---
     progress = team_doc.get("quest_progress", {}).get(quest_id, {})
     progress.setdefault("quest_timer_start", now)
     progress.setdefault("hint_timer_start", now)
-    mongo.db.teams.update_one({"_id": team_doc["_id"]},
-                              {"$set": {f"quest_progress.{quest_id}": progress}})
+    db.teams.update_one({"_id": team_doc["_id"]},
+                        {"$set": {f"quest_progress.{quest_id}": progress}})
     
+    # refresh
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
-    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+    if not ObjectId.is_valid(quest_id):
+        abort(400, description="Invalid quest id")
+    quest = db.quests.find_one({"_id": ObjectId(quest_id)})
 
     total_quests = len(team_doc["quest_order"])
     current_display = current_idx + 1
@@ -159,11 +213,8 @@ def treasurehunt():
         hint_images=hint_images, 
         status=request.args.get("status"),  # <-- for toast
         audio_path=audio_path,
-        
         current_display=current_display,
         total_quests=total_quests,
-        
-        
     )
 
 # -------------------------
@@ -175,7 +226,7 @@ def api_timers():
     if not team_name:
         return jsonify({"error": "Not logged in"}), 401
 
-    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    team_doc = db.teams.find_one({"team_name": team_name})
     if not team_doc:
         return jsonify({"error": "Team not found"}), 404
 
@@ -185,7 +236,7 @@ def api_timers():
     global_start = team_doc.get("global_timer_start")
     if global_start is None:
         global_start = now
-        mongo.db.teams.update_one(
+        db.teams.update_one(
             {"_id": team_doc["_id"]},
             {"$set": {"global_timer_start": global_start}}
         )
@@ -198,7 +249,9 @@ def api_timers():
     # Current quest
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
-    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+    if not ObjectId.is_valid(quest_id):
+        return jsonify({"error": "Invalid quest id"}), 400
+    quest = db.quests.find_one({"_id": ObjectId(quest_id)})
 
     progress = team_doc.get("quest_progress", {}).get(quest_id, {})
     if "quest_timer_start" not in progress:
@@ -206,7 +259,7 @@ def api_timers():
     if "hint_timer_start" not in progress:
         progress["hint_timer_start"] = now
 
-    mongo.db.teams.update_one(
+    db.teams.update_one(
         {"_id": team_doc["_id"]},
         {"$set": {f"quest_progress.{quest_id}": progress}}
     )
@@ -226,16 +279,18 @@ def api_use_hint():
     if not team_name:
         return jsonify({"error": "Not logged in"}), 401
 
-    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    team_doc = db.teams.find_one({"team_name": team_name})
     if not team_doc:
         return jsonify({"error": "Team not found"}), 404
 
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
+    if not ObjectId.is_valid(quest_id):
+        return jsonify({"error": "Invalid quest id"}), 400
 
     now_ts = int(datetime.now(timezone.utc).timestamp())
 
-    mongo.db.teams.update_one(
+    db.teams.update_one(
         {"_id": team_doc["_id"]},
         {"$set": {
             f"quest_progress.{quest_id}.used_hint": True,
@@ -245,9 +300,8 @@ def api_use_hint():
 
     return jsonify({"status": "ok"})
 
-
 # -------------------------
-# SUBMIT (supports grid cipher)
+# SUBMIT (supports grid cipher) + SAFE UPLOADS
 # -------------------------
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -255,7 +309,7 @@ def submit():
     if not team_name:
         return redirect(url_for('login'))
 
-    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    team_doc = db.teams.find_one({"team_name": team_name})
     if not team_doc:
         return redirect(url_for('logout'))
 
@@ -266,30 +320,38 @@ def submit():
 
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
-    quest = mongo.db.quests.find_one({"_id": ObjectId(quest_id)})
+    if not ObjectId.is_valid(quest_id):
+        abort(400, description="Invalid quest id")
+    quest = db.quests.find_one({"_id": ObjectId(quest_id)})
 
     # --- Answers ---
-    answer = (request.form.get('answer') or '').strip().lower()
-    grid_cipher_raw = (request.form.get('grid_cipher') or '').strip()
+    answer = (request.form.get('answer') or '').strip().lower()[:200]
+    grid_cipher_raw = (request.form.get('grid_cipher') or '').strip()[:2048]
 
-    # --- Use list directly from DB ---
-# --- Use list directly from DB, safely convert all items to strings ---
+    # --- Use list directly from DB, safely convert all items to strings ---
     correct_answers = [str(a).strip().lower() for a in (quest.get("correct_answers") or [])]
 
-    # --- File upload handling ---
+    # --- File upload handling (safe) ---
     uploaded_file = request.files.get("uploaded_file")
     file_uploaded = False
     if uploaded_file and uploaded_file.filename.strip():
+        if not allowed_filename(uploaded_file.filename):
+            abort(400, description="File type not allowed")
         safe_name = secure_filename(uploaded_file.filename)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         team_number = ''.join(filter(str.isdigit, team_name)) or "unknown"
-        save_dir = pathlib.Path("output") / f"team_{team_number}"
+        save_dir = UPLOAD_ROOT / f"team_{team_number}"
         save_dir.mkdir(parents=True, exist_ok=True)
-        file_path = save_dir / f"{timestamp}_{safe_name}"
+        file_path = (save_dir / f"{timestamp}_{safe_name}").resolve()
+
+        # Ensure the resolved path stays inside UPLOAD_ROOT (path traversal guard)
+        if UPLOAD_ROOT not in file_path.parents:
+            abort(400, description="Invalid file path")
+
         uploaded_file.save(file_path)
         file_uploaded = True
 
-        mongo.db.teams.update_one(
+        db.teams.update_one(
             {"_id": team_doc["_id"]},
             {"$push": {f"quest_progress.{quest_id}.uploaded_files": str(file_path)}}
         )
@@ -343,8 +405,6 @@ def submit():
             # Grid is correct if matches expected candidates or if no expected values
             grid_ok = gc in candidates if candidates else True
 
-
-
     # --- Determine completion ---
     completed = False
     if has_grid:
@@ -364,18 +424,17 @@ def submit():
     if has_grid:
         update_doc[f"quest_progress.{quest_id}.grid_matrix"] = grid_matrix
 
-    mongo.db.teams.update_one({"_id": team_doc["_id"]}, {"$set": update_doc})
+    db.teams.update_one({"_id": team_doc["_id"]}, {"$set": update_doc})
 
     # --- Redirect with status ---
     if completed:
         if current_idx + 1 < len(team_doc["quest_order"]):
-            mongo.db.teams.update_one({"_id": team_doc["_id"]}, {"$set": {"current_quest_idx": current_idx + 1}})
+            db.teams.update_one({"_id": team_doc["_id"]}, {"$set": {"current_quest_idx": current_idx + 1}})
             return redirect(url_for('treasurehunt', status="success"))
         else:
             return redirect(url_for('gamefinished', status="completed"))
     else:
         return redirect(url_for('treasurehunt', status="wrong"))
-
 
 # -------------------------
 # SKIP QUEST
@@ -386,7 +445,7 @@ def skip():
     if not team_name:
         return redirect(url_for('login'))
 
-    team_doc = mongo.db.teams.find_one({"team_name": team_name})
+    team_doc = db.teams.find_one({"team_name": team_name})
     if not team_doc:
         return redirect(url_for('logout'))
 
@@ -398,7 +457,7 @@ def skip():
     current_idx = team_doc["current_quest_idx"]
     quest_id = team_doc["quest_order"][current_idx]
 
-    mongo.db.teams.update_one(
+    db.teams.update_one(
         {"_id": team_doc["_id"]},
         {"$set": {
             f"quest_progress.{quest_id}.skipped": True,
@@ -406,17 +465,14 @@ def skip():
         }}
     )
 
-    # COMENTED OUT ONLY FOR DEBBUING THIS TO NOT GO TO NEXT QUEST TO BE FASTER
-
     if current_idx + 1 < len(team_doc["quest_order"]):
-        mongo.db.teams.update_one(
+        db.teams.update_one(
             {"_id": team_doc["_id"]},
             {"$set": {"current_quest_idx": current_idx + 1}}
         )
         return redirect(url_for('treasurehunt', status="skip"))
     else:
         return redirect(url_for('gamefinished', status="skip"))
-
 
 # -------------------------
 # GAME FINISHED (scoring + banner)
@@ -429,7 +485,7 @@ def game_finished():
 
     status = request.args.get("status")  # <-- read the end reason from querystring
 
-    team = mongo.db.teams.find_one({"team_name": team_name})
+    team = db.teams.find_one({"team_name": team_name})
     if not team:
         abort(404, description="Team not found")
 
@@ -443,7 +499,9 @@ def game_finished():
     rows = []
 
     for idx, qid in enumerate(quest_order, start=1):
-        quest = mongo.db.quests.find_one({"_id": ObjectId(qid)})
+        if not ObjectId.is_valid(qid):
+            continue
+        quest = db.quests.find_one({"_id": ObjectId(qid)})
         quest_number = quest.get("quest_number", idx) if quest else idx
 
         pg = progress_map.get(qid, {}) or {}
@@ -492,7 +550,6 @@ def game_finished():
 
     return render_template("gamefinished.html", totals=totals, rows=rows, end_reason=status)
 
-
 # -------------------------
 # LOGOUT
 # -------------------------
@@ -501,6 +558,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=9000, debug=True)
+    # Reduce noisy logs in prod if you want:
+    logging.basicConfig(level=logging.INFO)
+    app.run(host="0.0.0.0", port=9000)
