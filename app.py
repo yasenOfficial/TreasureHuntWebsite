@@ -35,8 +35,8 @@ db = client["treasurehunt"]
 
 # --- Uploads: outside static, whitelisted extensions ---
 ALLOWED_EXT = {
-  "jpg","jpeg","png","gif","mp4","pdf",
-  "heic","heif","hevc","mov","m4v","heifs"  # iOS-ish formats
+  "jpg","jpeg","png","gif","mp4","pdf", "mp3",
+  "heic","heif","hevc","mov","m4v","heifs", "mkv"  # iOS-ish formats
 }
 UPLOAD_ROOT = pathlib.Path(os.getenv("UPLOAD_ROOT", "./uploads")).resolve()
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
@@ -48,7 +48,8 @@ def allowed_filename(filename: str) -> bool:
     return ext in ALLOWED_EXT
 
 # --- Global timer duration (in seconds) ---
-GLOBAL_TIMER_DURATION = int(2.5 * 60 * 60)
+# GLOBAL_TIMER_DURATION = int(2.5 * 60 * 60)
+GLOBAL_TIMER_DURATION = int(24 * 60 * 60)
 
 # --- Users: prefer bcrypt hashes in env: TEAM{i}PASS_HASH ---
 # If *_HASH isn't present, will fall back to plaintext compare (log a warning).
@@ -561,14 +562,14 @@ def logout():
 @app.after_request
 def set_security_headers(resp):
     # Content Security Policy (CSP) – limit where scripts/styles/images can load from
-    resp.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' https://cdn.jsdelivr.net; "   # allow jsdelivr CDN
-        "style-src 'self' https://cdn.jsdelivr.net; "    # allow CSS from jsdelivr
-        "img-src 'self' data:; "                         # images + inline data URIs
-        "media-src 'self'; "                             # audio/video only from your server
-        "object-src 'none'; "                            # disallow Flash/old plugins
-    )
+    # resp.headers["Content-Security-Policy"] = (
+    #     "default-src 'self'; "
+    #     "script-src 'self' https://cdn.jsdelivr.net; "   # allow jsdelivr CDN
+    #     "style-src 'self' https://cdn.jsdelivr.net; "    # allow CSS from jsdelivr
+    #     "img-src 'self' data:; "                         # images + inline data URIs
+    #     "media-src 'self'; "                             # audio/video only from your server
+    #     "object-src 'none'; "                            # disallow Flash/old plugins
+    # )
 
     # Extra protections
     resp.headers["X-Content-Type-Options"] = "nosniff"

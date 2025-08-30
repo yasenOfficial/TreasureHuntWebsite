@@ -46,7 +46,7 @@
         class="container"
         style="max-width: 720px; margin: 0 auto; padding: 16px; mt-3"
       >
-        <h2 style="margin-bottom: .5rem;">Quest {{ current_display }} / {{ total_quests }}</h2>
+        <h2 style="margin-bottom: .5rem;">Задача {{ current_display }} / {{ total_quests }}</h2>
 
         <!-- Global Timer -->
         <div id="global-timer" style="margin: 8px 0; font-weight: 600"></div>
@@ -209,20 +209,20 @@
 
           {% if quest.correct_answers and quest.correct_answers|length > 0 %}
           <div class="mb-3">
-            <label for="answer" class="form-label">Your Answer:</label>
+            <label for="answer" class="form-label">Вашият отговор:</label>
             <input type="text" id="answer" name="answer" required />
           </div>
           {% endif %}
 
           {% if quest.file_required %}
           <div class="mb-3">
-            <label for="uploaded_file" class="form-label">Upload File:</label>
+            <label for="uploaded_file" class="form-label">Прикачете файл:</label>
             <input type="file" id="uploaded_file" name="uploaded_file" required />
           </div>
           {% endif %}
 
             <div class="d-flex justify-content-center" style="gap: 8px; margin: 10px 0;">
-              <button id="submit-btn" type="submit">Submit</button>
+              <button id="submit-btn" type="submit">Предайте</button>
             </div>
 
         </form>
@@ -234,7 +234,7 @@
 
 {% if has_hint %}
   <div style="margin-top: 12px">
-    <button id="hint-btn" type="button">Show Hint</button>
+    <button id="hint-btn" type="button">Покажи Подсказка</button>
   </div>
 
   <div id="hint-content" style="display: none; margin-top: 6px">
@@ -312,7 +312,7 @@
         >
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-          <button id="skip-btn" type="submit">Skip</button>
+          <button id="skip-btn" type="submit">Пропусни</button>
         </form>
       </div>
 

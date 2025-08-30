@@ -14,16 +14,24 @@
   <div class="toast-container position-fixed top-0 end-0 p-3"></div>
 
   <div class="container th-scope" style="max-width: 900px; margin: 0 auto; padding: 16px; mt-3">
-    <h2>🏁 Game Finished — {{ totals.team_name }}</h2>
+    <h2>🏁 Играта свърши — {{ totals.team_name }}</h2>
+    <h3 class="mb-3 text-center">🎉 Поздравления!</h3>
 
     {% if end_reason == 'timeup' %}
-<div class="alert alert-timeup text-center fw-bold" role="alert">
-    ⏰ TIME IS UP
-</div>
-{% endif %}
+    <div class="alert alert-timeup text-center fw-bold" role="alert">
+        ⏰ Времето изтече! Надяваме се, че сте се забавлявали!
+    </div>
+    {% endif %}
 
-      <h2>Results coming soon...</h2>
-
+      <p>
+        Това е краят на вашето пътуване! <br>
+        Резултатите ще научите по-късно днес.
+      </p>
+      <p>
+        Сега се отправете към <strong>Хан Хаджи Николи</strong>, където ще се насладим на обяд заедно
+        с останалите отбори 🙂
+      </p>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

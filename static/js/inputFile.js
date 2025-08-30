@@ -23,7 +23,7 @@ window.addEventListener('DOMContentLoaded', function () {
     // Create the button part
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = 'Choose File';
+    button.textContent = 'Изберете файл';
     button.style.cssText = `
       height: 100%;
       border: none;
@@ -46,7 +46,7 @@ window.addEventListener('DOMContentLoaded', function () {
 
     // Create the filename display
     const filename = document.createElement('span');
-    filename.textContent = 'No file chosen';
+    filename.textContent = 'Не е избран файл';
     filename.style.cssText = `
       flex: 1;
       padding: 0 1rem;

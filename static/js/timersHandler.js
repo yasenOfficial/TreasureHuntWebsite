@@ -19,16 +19,16 @@ window.addEventListener('DOMContentLoaded', function () {
 
     if (status === "success") {
       toastEl.classList.add("text-bg-success");
-      toastBody.textContent = "✅ Quest submitted successfully!";
+      toastBody.textContent = "✅ Задачата е изпратена успешно!";
     } else if (status === "skip") {
       toastEl.classList.add("text-bg-warning");
-      toastBody.textContent = "⏩ Quest Skipped";
+      toastBody.textContent = "⏩ Задачата е пропусната";
     } else if (status === "wrong") {
       toastEl.classList.add("text-bg-danger");
-      toastBody.textContent = "❌ Wrong answer. Try again!";
+      toastBody.textContent = "❌ Грешен отговор. Опитайте отново!";
     } else if (status === "timeup") {
       toastEl.classList.add("text-bg-danger");
-      toastBody.textContent = "⏰ TIME IS UP";
+      toastBody.textContent = "⏰ Времето изтече!";
     } else {
       toastBody.textContent = status;
     }
@@ -113,10 +113,10 @@ window.addEventListener('DOMContentLoaded', function () {
         const end = overallStart + overallDuration;
         const remaining = end - now;
 
-        globalTimerElem.textContent = `⏰ Time Remaining: ${formatTimeLeft(remaining)}`;
+        globalTimerElem.textContent = `⏰ Оставащо време: ${formatTimeLeft(remaining)}`;
 
         if (remaining <= 0) {
-          globalTimerElem.textContent = "⏰ Time's up!";
+          globalTimerElem.textContent = "⏰ Времето изтече!";
           lockForm();
           window.location.assign('/gamefinished?status=timeup');
           clearInterval(globalInterval);
@@ -134,16 +134,16 @@ window.addEventListener('DOMContentLoaded', function () {
         if (questTimerDuration > 0 && remaining > 0) {
           if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.textContent = `⏳ Submit in ${remaining}s`;
+            submitBtn.textContent = `⏳ Изпращане след ${remaining}s`;
           }
           if (skipBtn) {
             skipBtn.disabled = true;
-            skipBtn.textContent = `⏳ Skip in ${remaining}s`;
+            skipBtn.textContent = `⏳ Пропускане след ${remaining}s`;
           }
         } else {
           if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.textContent = "Submit";
+            submitBtn.textContent = "Изпращане";
           }
           if (skipBtn) {
             skipBtn.disabled = false;
@@ -166,15 +166,15 @@ window.addEventListener('DOMContentLoaded', function () {
         if (hintTimerDuration > 0 && remaining > 0) {
           if (hintBtn) {
             hintBtn.disabled = true;
-            hintBtn.textContent = `🔒 Hint in ${remaining}s`;
+            hintBtn.textContent = `🔒 Подсказка след ${remaining}s`;
           }
         } else {
           if (hintBtn) {
             hintBtn.disabled = false;
             if (hintContent && hintContent.style.display === "block") {
-              hintBtn.textContent = "Hide Hint";
+              hintBtn.textContent = "Скрий подсказка";
             } else {
-              hintBtn.textContent = "Show Hint";
+              hintBtn.textContent = "Покажи подсказка";
             }
           }
           clearInterval(hintInterval);
@@ -193,7 +193,7 @@ window.addEventListener('DOMContentLoaded', function () {
           const visible = (hintContent.style.display === "block");
           hintContent.style.display = visible ? "none" : "block";
           if (!hintBtn.disabled) {
-            hintBtn.textContent = visible ? "Show Hint" : "Hide Hint";
+            hintBtn.textContent = visible ? "Покажи подсказка" : "Скрий подсказка";
           }
         });
       }
@@ -202,6 +202,6 @@ window.addEventListener('DOMContentLoaded', function () {
       if (typeof err === 'string' && err.includes('Redirecting to gamefinished')) return;
       console.error("Failed to load timers:", err);
       const globalTimerElem = document.getElementById('global-timer');
-      if (globalTimerElem) globalTimerElem.textContent = "❌ Timer loading failed";
+      if (globalTimerElem) globalTimerElem.textContent = "❌ Зареждането на таймерите не успя xD?";
     });
 });
